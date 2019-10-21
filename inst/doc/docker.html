@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title></title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<p>A dockerised version of <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span> is available <a href="https://hub.docker.com/r/ranghetti/sen2r">here</a>: it contains a working RStudio environment with the package <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span> and all its dependencies (both R packages and runtime dependencies). It can be used in order to avoid troublings about compiling all the required R packages, or in case of problems with runtime dependencies (typically GDAL over Windows).</p>
+
+<p>To use it:</p>
+
+<ol>
+<li><p><a href="https://docs.docker.com/install">install Docker CE</a> version 1.13 or higher;</p></li>
+<li><p>read the docker documentation in <a href="https://docs.docker.com/get-started">Part 1</a>;</p></li>
+<li><p>obtain the image of <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>:</p>
+
+<pre><code class="bash">docker pull ranghetti/sen2r:latest
+</code></pre>
+
+<p>where <code>latest</code> corresponds to the software version in branch <a href="https://github.com/ranghetti/sen2r/tree/master">master</a> (see <a href="https://cloud.docker.com/repository/registry-1.docker.io/ranghetti/sen2r/tags">here</a> all the available docker tags);</p></li>
+<li><p>run the docker:</p>
+
+<pre><code class="bash">docker run --rm -e PASSWORD=sen2r -e USERID=$(id -u) -v $(pwd):/home/rstudio/host -p 8777:8787 ranghetti/sen2r
+</code></pre>
+
+<p>where:</p></li>
+</ol>
+
+<pre><code>- `-e PASSWORD=sen2r` is the password to be used to login;
+- `-v $(pwd):/home/rstudio/host` means that the current directory will be mounted in the docker, and its content will be available in the subdirectory `host` of the docker folder tree (to mount a different directory, replace `$(pwd)` with the desired directory);
+- `-p 8777:8787` means that the dockerised RStudio will be accessible from port 8777 (change it to use a different port).
+</code></pre>
+
+<ol>
+<li>access to the RStudio environment from <code>http://localhost:8777</code>, logging in with user <code>rstudio</code> and the password set as above.</li>
+</ol>
+
+</body>
+
+</html>

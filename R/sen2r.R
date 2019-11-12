@@ -35,6 +35,9 @@
 #' @param online (optional) Logical: TRUE (default) to search for available
 #'  products on SciHub (and download if needed); FALSE to work
 #'  only with already downloaded SAFE products.
+#' @param order_lta (optional) Logical: TRUE (default) to order products from
+#'  the Long Term Archive if unavailable for direct download; FALSE to simply
+#'  skip them (this option has effect only in online mode).
 #' @param apihub Path of the text file containing credentials
 #'  of SciHub account.
 #'  If NA (default), the default location inside the package will be used.
@@ -291,10 +294,15 @@
 #'  is the path for messages, the second one for the output.
 #' @return A vector with the paths of the files which were created (excluded
 #'  the temporary files); NULL otherwise.
-#'  The vector includes two attributes:
+#'  The vector includes some attributes:
 #'  - `cloudcovered` with the list of images not created due to the higher
 #'      percentage of cloud covered pixels;
-#'  - `missing` with the list of images not created due to other reasons.
+#'  - `missing` with the list of images not created due to other reasons;
+#'  - `procpath` with the path of a json parameter file, created after each
+#'      `sen2r()` run, containing the parameters used in the execution of the
+#'      function;
+#'  - `ltapath` with the path of a json file containing the list of the 
+#'      SAFE Sentinel-2 archives eventually ordered in Long Term Archive.
 #'
 #' @import data.table
 #' @importFrom utils packageVersion
@@ -313,7 +321,7 @@
 #' 
 #' # Launch a processing from a saved JSON file (here we use an internal function
 #' # to create a testing json file - this is not intended to be used by final users)
-#' json_path <- sen2r:::build_example_param_file()
+#' json_path <- build_example_param_file()
 #' 
 #' out_paths_2 <- sen2r(json_path)
 #' # Notice that passing the path of a JSON file results in launching
@@ -357,8 +365,7 @@
 #' thumb_4[grep("SCL", thumb_4)] <-
 #'   gsub("jpg$", "png", thumb_4[grep("SCL", thumb_4)])
 #'   
-#' oldpar <- par(mfrow = c(1,3), mar = rep(0,4))
-#' image(stars::read_stars(thumb_2[grep("TOA", thumb_2)]), rgb = 1:3)
+#' oldpar <- par(mfrow = c(1,2), mar = rep(0,4))
 #' image(stars::read_stars(thumb_2[grep("BOA", thumb_2)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_2[grep("SCL", thumb_2)]), rgb = 1:3)
 #' 
@@ -366,13 +373,11 @@
 #' image(stars::read_stars(thumb_2[grep("MSAVI2", thumb_2)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_2[grep("NDVI", thumb_2)]), rgb = 1:3)
 #' 
-#' par(mfrow = c(1,3), mar = rep(0,4))
-#' image(stars::read_stars(thumb_2[grep("RGB432T", thumb_2)]), rgb = 1:3)
+#' par(mfrow = c(1,2), mar = rep(0,4))
 #' image(stars::read_stars(thumb_2[grep("RGB432B", thumb_2)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_2[grep("RGB843B", thumb_2)]), rgb = 1:3)
 #' 
-#' par(mfrow = c(1,3), mar = rep(0,4))
-#' image(stars::read_stars(thumb_4[grep("TOA", thumb_4)]), rgb = 1:3)
+#' par(mfrow = c(1,2), mar = rep(0,4))
 #' image(stars::read_stars(thumb_4[grep("BOA", thumb_4)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_4[grep("SCL", thumb_4)]), rgb = 1:3)
 #' 
@@ -380,8 +385,7 @@
 #' image(stars::read_stars(thumb_4[grep("MSAVI2", thumb_4)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_4[grep("NDVI", thumb_4)]), rgb = 1:3)
 #' 
-#' par(mfrow = c(1,3), mar = rep(0,4))
-#' image(stars::read_stars(thumb_4[grep("RGB432T", thumb_4)]), rgb = 1:3)
+#' par(mfrow = c(1,2), mar = rep(0,4))
 #' image(stars::read_stars(thumb_4[grep("RGB432B", thumb_4)]), rgb = 1:3)
 #' image(stars::read_stars(thumb_4[grep("RGB843B", thumb_4)]), rgb = 1:3)
 #' 
@@ -396,6 +400,7 @@ sen2r <- function(param_list = NULL,
                   s2_levels = c("l1c","l2a"),
                   sel_sensor = c("s2a","s2b"),
                   online = TRUE,
+                  order_lta = TRUE,
                   apihub = NA,
                   downloader = "builtin",
                   overwrite_safe = FALSE,
@@ -480,6 +485,7 @@ sen2r <- function(param_list = NULL,
     s2_levels = s2_levels,
     sel_sensor = sel_sensor,
     online = online,
+    order_lta = order_lta,
     apihub = apihub,
     downloader = downloader,
     overwrite_safe = overwrite_safe,
@@ -573,6 +579,7 @@ sen2r <- function(param_list = NULL,
                    s2_levels,
                    sel_sensor,
                    online,
+                   order_lta,
                    apihub,
                    downloader,
                    overwrite_safe,
@@ -630,7 +637,7 @@ sen2r <- function(param_list = NULL,
   # to avoid NOTE on check
   . <- sensing_datetime <- creation_datetime <- mission <- level <- id_orbit <-
     id_tile <- name <- id_baseline <- prod_type <- name <- sel_group_A <-
-    i_group_A <- sel_apihub_path <- i_group_B <- sensing_date <- NULL
+    i_group_A <- sel_apihub_path <- i_group_B <- sensing_date <- lta <- NULL
   
   ### Preliminary settings ###
   
@@ -808,6 +815,29 @@ sen2r <- function(param_list = NULL,
       )
     }
   }
+  
+  # Automatically save the JSON of the parameters used for the current chain
+  outpm_dir <- file.path(dirname(attr(load_binpaths(), "path")), "proc_par")
+  dir.create(outpm_dir, showWarnings = FALSE)
+  outpm_path <- file.path(
+    outpm_dir,
+    strftime(Sys.time(), format = "s2proc_%Y%m%d_%H%M%S.json")
+  )
+  pm_exported <- pm[!names(pm) %in% c(".only_list_names", "globenv")]
+  if (inherits(pm$extent, "sf") | inherits(pm$extent, "sfc")) {
+    pm_exported$extent <- st_transform(pm$extent, 4326) %>%
+      geojson_json(pretty=TRUE)
+  }
+  if (inherits(pm$pkg_version, "numeric_version")) {
+    pm_exported$pkg_version <- as.character(pm$pkg_version)
+  }
+  writeLines(toJSON(pm_exported, pretty = TRUE), outpm_path)
+  attr(pm, "outpath") <- outpm_path
+  
+  # Add output attribute related to parameter json
+  out_attributes <- list() # initialise sen2r_output attributes
+  out_attributes[["procpath"]] <- attr(pm, "outpath")
+  
   
   # Set log variables
   # stop logging if it was already going on
@@ -1016,7 +1046,7 @@ sen2r <- function(param_list = NULL,
   ### Find SAFE and compute the names of required files ###
   
   ## 2. List required products ##
-  s2_lists <- list()
+  s2_lists <- s2_lists_islta <- list()
   
   if (pm$online == TRUE) {
     
@@ -1041,8 +1071,12 @@ sen2r <- function(param_list = NULL,
         orbit = pm$s2orbits_selected,
         level = "L1C",
         max_cloud = pm$max_cloud_safe,
+        availability = "check",
         apihub = pm$apihub
       )
+      # save lta availability (TRUE if on LTA, FALSE if online)
+      s2_lists_islta[["l1c"]] <- !attr(s2_lists[["l1c"]], "online")
+      names(s2_lists_islta[["l1c"]]) <- names(s2_lists[["l1c"]])
     }
     if ("l2a" %in% pm$s2_levels) {
       # list of SAFE (L1C or/and L2A) needed for required L2A
@@ -1064,8 +1098,12 @@ sen2r <- function(param_list = NULL,
           "L1C"
         },
         max_cloud = pm$max_cloud_safe,
+        availability = "check",
         apihub = pm$apihub
       )
+      # save lta availability (TRUE if on LTA, FALSE if online)
+      s2_lists_islta[["l2a"]] <- !attr(s2_lists[["l2a"]], "online")
+      names(s2_lists_islta[["l2a"]]) <- names(s2_lists[["l2a"]])
     }
     
   } else {
@@ -1097,16 +1135,14 @@ sen2r <- function(param_list = NULL,
       }
     }
     s2_lists <- lapply(s2_lists, function(l) {
-      sapply(l, function(x) {
-        tryCatch(safe_getMetadata(x, info="nameinfo")$level,
-                 error = function(e) NA)
-      })
+      safe_getMetadata(l, "level", abort = FALSE, format = "vector", simplify = TRUE)
     })
     s2_lists <- lapply(s2_lists, function(l) {l[!is.na(l)]})
     
   }
   s2_list <- unlist(s2_lists)[!duplicated(unlist(lapply(s2_lists, names)))]
-  rm(s2_lists)
+  s2_list_islta <- unlist(s2_lists_islta)[!duplicated(unlist(lapply(s2_lists_islta, names)))]
+  rm(s2_lists, s2_lists_islta)
   
   # If s2_list is empty, exit
   if (length(s2_list)==0) {
@@ -1129,39 +1165,35 @@ sen2r <- function(param_list = NULL,
   # (SAFE with the same metadata, except from baseline and ingestion date)
   
   # getting required metadata
-  s2_dt <- lapply(names(s2_list), function(x) {
-    unlist(safe_getMetadata(x, info="nameinfo")) %>%
-      t() %>%
-      as.data.frame(stringsAsFactors=FALSE)
-  }) %>%
-    rbindlist(fill=TRUE)
+  s2_dt <- safe_getMetadata(
+    names(s2_list), 
+    info = c("nameinfo"), format = "data.table"
+  )
+  # s2_dt <- lapply(names(s2_list), function(x) {
+  #   unlist(safe_getMetadata(x, info="nameinfo")) %>%
+  #     t() %>%
+  #     as.data.frame(stringsAsFactors=FALSE)
+  # }) %>%
+  #   rbindlist(fill=TRUE)
   if (nrow(s2_dt)==0) {
     # generate column names for empty dt (to avoid errors)
-    s2_dt <- as.data.table(safe_getMetadata(
+    s2_dt <- safe_getMetadata(
       "S2A_MSIL2A_20000101T000000_N0200_R001_T01TAA_20000101T000000.SAFE",
-      info="nameinfo"
-    ), stringsAsFactors = FALSE)[-1,]
+      info = "nameinfo", format = "data.table"
+    )[-1,]
   }
+  s2_dt[,"lta":=if (is.null(s2_list_islta)) {FALSE} else {s2_list_islta}]
   s2_dt[,c("name","url"):=list(nn(names(s2_list)),nn(s2_list))]
-  s2_dt[,c("sensing_datetime","creation_datetime"):=
-          list(as.POSIXct(sensing_datetime, format="%s"),
-               as.POSIXct(creation_datetime, format="%s"))]
   
   # list existing products and get metadata
   s2_existing_list <- list.files(unique(c(pm$path_l1c,pm$path_l2a)), "\\.SAFE$")
   if (length(s2_existing_list) > 0 & pm$online == TRUE) {
-    s2_isvalid <- sapply(s2_existing_list, safe_isvalid, info="nameinfo")
+    s2_isvalid <- safe_isvalid(s2_existing_list, check_file = FALSE)
     s2_existing_list <- s2_existing_list[s2_isvalid]
-    s2_existing_dt <- lapply(s2_existing_list, function(x) {
-      unlist(safe_getMetadata(x, info="nameinfo")) %>%
-        t() %>%
-        as.data.frame(stringsAsFactors=FALSE)
-    }) %>%
-      rbindlist(fill=TRUE)
-    s2_existing_dt[,"name":=s2_existing_list]
-    s2_existing_dt[,c("sensing_datetime","creation_datetime"):=
-                     list(as.POSIXct(sensing_datetime, format="%s"),
-                          as.POSIXct(creation_datetime, format="%s"))]
+    s2_existing_dt <- safe_getMetadata(
+      s2_existing_list, 
+      info = c("nameinfo"), format = "data.table"
+    )
     
     # make a vector with only metadata to be used for the comparison
     s2_meta_pasted <- s2_dt[,list("V1" = paste(
@@ -1189,16 +1221,17 @@ sen2r <- function(param_list = NULL,
         !is.na(match(s2_meta_pasted, s2_existing_meta_pasted)),
         name := s2_existing_list[na.omit(match(s2_meta_pasted, s2_existing_meta_pasted))]
         ]
-      s2_dt[!is.na(match(s2_meta_pasted, s2_existing_meta_pasted)), url:=""]
+      s2_dt[!is.na(match(s2_meta_pasted, s2_existing_meta_pasted)), c("url","lta"):=list("",FALSE)]
     }
   }
   
   # removing duplicated products
-  # (in case of products with different baseline / ingestion time, keep the most recent one)
+  # (in case of products with different baseline / ingestion time, keep the most 
+  # recent one / the existing or downloadable)
   s2_dt <- if (!is.null(s2_dt$id_baseline)) {
-    s2_dt[order(-sensing_datetime, -creation_datetime, -id_baseline),]
+    s2_dt[order(-sensing_datetime, lta, -creation_datetime, -id_baseline),]
   } else {
-    s2_dt[order(-sensing_datetime, -creation_datetime),]
+    s2_dt[order(-sensing_datetime, lta, -creation_datetime),]
   }
   s2_dt <- s2_dt[!duplicated(paste(
     prod_type, version, mission, level,
@@ -1245,10 +1278,37 @@ sen2r <- function(param_list = NULL,
     s2_dt <- s2_dt[id_orbit %in% pm$s2orbits_selected,]
   }
   # setorder(s2_dt, -sensing_datetime)
-  s2_list_l1c <- s2_dt[level=="1C",url] # list of required L1C
-  s2_list_l2a <- s2_dt[level=="2A",url] # list of required L2A
-  names(s2_list_l1c) <- s2_dt[level=="1C",name]
-  names(s2_list_l2a) <- s2_dt[level=="2A",name]
+  
+  # check which dates whould be ignored for now
+  # (i.e. when other SAFE of the same date must be ordered)
+  s2_lta_dates <- s2_dt[
+    ,list(lta = any(lta)),
+    by = list(sensing_date = as.Date(sensing_datetime))
+    ] %>% 
+    .[lta==TRUE, sensing_date]
+  s2_list_lta <- s2_dt[lta==TRUE, url] # list of SAFE to be ordered
+  s2_list_ign <- s2_dt[lta==FALSE & as.Date(sensing_datetime) %in% s2_lta_dates, url] # list of SAFE to be ignored
+  s2_list_l1c <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="1C", url] # list of required L1C
+  s2_list_l2a <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="2A", url] # list of required L2A
+  names(s2_list_lta) <- s2_dt[lta==TRUE, name]
+  names(s2_list_ign) <- s2_dt[lta==FALSE & as.Date(sensing_datetime) %in% s2_lta_dates, name]
+  names(s2_list_l1c) <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="1C", name]
+  names(s2_list_l2a) <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="2A", name]
+  
+  # Order products from LTA if required
+  s2_list_ordered <- if (pm$online == TRUE & pm$order_lta == TRUE) {
+    .s2_order(
+      s2_list_lta, 
+      .s2_availability = rep(FALSE, length(s2_list_lta)),
+      .log_path = FALSE # because it is done at the end
+    )
+  } else {
+    character(0)
+  }
+  
+  # Add output attribute related to LTA json
+  out_attributes[["ltapath"]] <- attr(s2_list_ordered, "path")
+  
   
   # add expected L2A names (after sen2cor)
   if (pm$step_atmcorr %in% c("auto","scihub")) {
@@ -1309,21 +1369,16 @@ sen2r <- function(param_list = NULL,
     
     # Couple L1C and L2A SAFE if both are required for the same products
     if (all(c("l1c", "l2a") %in% pm$s2_levels)) {
-      s2_meta_l2a <- lapply(names(s2_list_l2a_exp), function(x) {
-        unlist(safe_getMetadata(x, info="nameinfo")) %>%
-          t() %>%
-          as.data.frame(stringsAsFactors=FALSE)
-      }) %>%
-        rbindlist(fill=TRUE) %>%
+      s2_meta_l2a <- safe_getMetadata(
+        names(s2_list_l2a_exp), 
+        info = c("nameinfo"), format = "data.table"
+      ) %>%
         .[,list(mission, sensing_datetime, id_orbit, id_tile)] %>%
         apply(1, paste, collapse = "_")
-      s2_meta_l1c <- lapply(names(s2_list_l1c), function(x) {
-        unlist(safe_getMetadata(x, info="nameinfo")) %>%
-          t() %>%
-          as.data.frame(stringsAsFactors=FALSE)
-      }) %>%
-        rbindlist(fill=TRUE) %>%
-        .[,list(mission, sensing_datetime, id_orbit, id_tile)] %>%
+      s2_meta_l1c <- safe_getMetadata(
+        names(s2_list_l1c), 
+        info = c("nameinfo"), format = "data.table"
+      ) %>% .[,list(mission, sensing_datetime, id_orbit, id_tile)] %>%
         apply(1, paste, collapse = "_")
       s2_l2a_orphan <- !s2_meta_l2a %in% s2_meta_l1c
       s2_l1c_orphan <- !s2_meta_l1c %in% s2_meta_l2a
@@ -1336,6 +1391,8 @@ sen2r <- function(param_list = NULL,
           if (any(s2_l1c_orphan)) {paste0(
             "This issue can be avoided by setting argument \"step_atmcorr\" ",
             "to 'auto' or 'scihub', or \"online\" to TRUE, ",
+            "or re-launching the processing when products ordered from the ",
+            "Long Term Archive will be made available, ",
             "so that missing Level-2A can be produced or downloaded."
           )}
         )
@@ -1379,13 +1436,20 @@ sen2r <- function(param_list = NULL,
           "specify a different output directory."
         )
       }
-      return(invisible(NULL))
+      sen2r_output <- character(0)
+      attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+      return(invisible(sen2r_output))
     }
     
   } # end of pm$preprocess==TRUE IF cycle (names of required files)
   
   # if list_sen2r_paths(): stop here
-  if (pm$preprocess == TRUE & .only_list_names == TRUE) {return(s2names)}
+  
+  if (pm$preprocess == TRUE & .only_list_names == TRUE) {
+    sen2r_output <- s2names
+    attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+    return(sen2r_output)
+  }
   
   ### SAFE processing: download and atmospheric correction ###
   
@@ -1610,9 +1674,13 @@ sen2r <- function(param_list = NULL,
         )
         
         # If all products are compactname, launch a single s2_download() instance
-        if (all(sapply(names(sel_s2_list_l2a), function(x) {
-          safe_getMetadata(x, "nameinfo")$version
-        }) == "compact")) {
+        if (all(safe_getMetadata(
+          names(sel_s2_list_l2a), info = "version", 
+          format = "vector", simplify = TRUE
+        ) == "compact")) {
+          # if (all(sapply(names(sel_s2_list_l2a), function(x) {
+          #   safe_getMetadata(x, "nameinfo")$version
+          # }) == "compact")) {
           # If OVERWRITE == TRUE, use the full list. Otherwise, download only the missing ones
           if (pm$overwrite_safe) {
             s2_to_download <- sel_s2_list_l2a
@@ -1637,35 +1705,39 @@ sen2r <- function(param_list = NULL,
             overwrite = pm$overwrite_safe
           )
         } else { # otherwise, launch one per tile
-          lapply(pm$s2tiles_selected, function(tile) {
-            if (length(pm$s2tiles_selected) > 1) {
-              print_message(
-                type = "message",
-                date = TRUE,
-                "Cycle ",grep(tile, pm$s2tiles_selected),
-                " of ",length(pm$s2tiles_selected),
-                " (tile ",tile,
-                if (grep(tile, pm$s2tiles_selected)==1) {
-                  " and products with a compact name)"
-                } else {
-                  " within products with an old long name)"
-                }
-              )
-            }
-            s2_download(
-              sel_s2_list_l2a, # ask to download all the images,
-              # and not only the non existing ones,
-              # because of the cycle on tiles
-              # (with compactname products, all the zips are downloaded
-              # during the first execution, since argument "tile" is
-              # ignored).
-              outdir = path_l2a,
-              downloader = pm$downloader,
-              tile = tile,
-              apihub = sel_apihub_path,
-              overwrite = pm$overwrite_safe
-            )
-          })
+          print_message(
+            type = "error",
+            "Old name SAFE products are no longer supported."
+          )
+          # lapply(pm$s2tiles_selected, function(tile) {
+          #   if (length(pm$s2tiles_selected) > 1) {
+          #     print_message(
+          #       type = "message",
+          #       date = TRUE,
+          #       "Cycle ",grep(tile, pm$s2tiles_selected),
+          #       " of ",length(pm$s2tiles_selected),
+          #       " (tile ",tile,
+          #       if (grep(tile, pm$s2tiles_selected)==1) {
+          #         " and products with a compact name)"
+          #       } else {
+          #         " within products with an old long name)"
+          #       }
+          #     )
+          #   }
+          #   s2_download(
+          #     sel_s2_list_l2a, # ask to download all the images,
+          #     # and not only the non existing ones,
+          #     # because of the cycle on tiles
+          #     # (with compactname products, all the zips are downloaded
+          #     # during the first execution, since argument "tile" is
+          #     # ignored).
+          #     outdir = path_l2a,
+          #     downloader = pm$downloader,
+          #     tile = tile,
+          #     apihub = sel_apihub_path,
+          #     overwrite = pm$overwrite_safe
+          #   )
+          # })
         }
         
         print_message(
@@ -1681,9 +1753,13 @@ sen2r <- function(param_list = NULL,
         )
         
         # If all products are compactname, launch a single s2_download() instance
-        if (all(sapply(names(sel_s2_list_l1c), function(x) {
-          safe_getMetadata(x, "nameinfo")$version
-        }) == "compact")) {
+        # if (all(sapply(names(sel_s2_list_l1c), function(x) {
+        #   safe_getMetadata(x, "nameinfo")$version
+        # }) == "compact")) {
+        if (all(safe_getMetadata(
+          names(sel_s2_list_l1c), info = "version", 
+          format = "vector", simplify = TRUE
+        ) == "compact")) {
           
           # If OVERWRITE == TRUE, use the full list. Otherwise, download only the missing ones
           if (pm$overwrite_safe) {
@@ -1713,34 +1789,38 @@ sen2r <- function(param_list = NULL,
             overwrite = pm$overwrite_safe
           )
         } else { # otherwise, launch one per tile
-          lapply(pm$s2tiles_selected, function(tile) {
-            if (length(pm$s2tiles_selected) > 1) {
-              print_message(
-                type = "message",
-                date = TRUE,
-                "Cycle ",grep(tile, pm$s2tiles_selected),
-                " of ",length(pm$s2tiles_selected),
-                " (tile ",tile,
-                if (grep(tile, pm$s2tiles_selected)==1) {
-                  " and products with a compact name)"
-                } else {
-                  " within products with an old long name)"
-                }
-              )
-            }
-            s2_download(
-              sel_s2_list_l1c, # ask to download all the images,
-              # and not only the non existing ones,
-              # because of the cycle on tiles
-              # (with compactname products, all the zips are downloaded
-              # during the first execution, since argument "tile" is
-              # ignored).
-              outdir = path_l1c,
-              downloader = pm$downloader,
-              tile = tile,
-              overwrite = pm$overwrite_safe
-            )
-          })
+          print_message(
+            type = "error",
+            "Old name SAFE products are no longer supported."
+          )
+          # lapply(pm$s2tiles_selected, function(tile) {
+          #   if (length(pm$s2tiles_selected) > 1) {
+          #     print_message(
+          #       type = "message",
+          #       date = TRUE,
+          #       "Cycle ",grep(tile, pm$s2tiles_selected),
+          #       " of ",length(pm$s2tiles_selected),
+          #       " (tile ",tile,
+          #       if (grep(tile, pm$s2tiles_selected)==1) {
+          #         " and products with a compact name)"
+          #       } else {
+          #         " within products with an old long name)"
+          #       }
+          #     )
+          #   }
+          #   s2_download(
+          #     sel_s2_list_l1c, # ask to download all the images,
+          #     # and not only the non existing ones,
+          #     # because of the cycle on tiles
+          #     # (with compactname products, all the zips are downloaded
+          #     # during the first execution, since argument "tile" is
+          #     # ignored).
+          #     outdir = path_l1c,
+          #     downloader = pm$downloader,
+          #     tile = tile,
+          #     overwrite = pm$overwrite_safe
+          #   )
+          # })
         }
         # FIXME this operation can be very long with oldname products but tiled:
         # Sentinel-download.py scans within single xml files and discharges
@@ -1808,10 +1888,11 @@ sen2r <- function(param_list = NULL,
                 "^S2([AB])\\_((?:OPER\\_PRD\\_)?)MSIL1C\\_","S2\\1\\_\\2MSIL2A\\_",
                 names(sel_s2_list_l1c)
               )
-            ) %in% names(sel_s2_list_l2a)
+            ) %in% names(sel_s2_list_l2a) &
+              names(sel_s2_list_l1c) %in% safe_names_l1c_tocorrect
             ]
         } else {
-          sel_s2_list_l1c
+          sel_s2_list_l1c[names(sel_s2_list_l1c) %in% safe_names_l1c_tocorrect]
         }
         
         if (length(sel_s2_list_l1c_tocorrect)>0) {
@@ -1863,17 +1944,13 @@ sen2r <- function(param_list = NULL,
           "Execution of sen2r session terminated."
         )
         
-        return(invisible(
-          c(file.path(path_l1c,names(sel_s2_list_l1c)),
-            file.path(path_l2a,names(sel_s2_list_l2a)))
-        ))
+        sen2r_output <- c(file.path(path_l1c,names(sel_s2_list_l1c)),
+                          file.path(path_l2a,names(sel_s2_list_l2a)))
+        attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+        return(invisible(sen2r_output))
         
       }
       
-      
-      if (pm$preprocess == FALSE) {
-        return(invisible(NULL))
-      }
       
       # update names for output files (after #filter2)
       print_message(type = "message", date = TRUE, "Updating output names...")
@@ -2542,7 +2619,9 @@ sen2r <- function(param_list = NULL,
   } # end of s2names_groups_A FOREACH 1/2 cycle (2 cycles)
   
   if (pm$preprocess == FALSE | .only_list_names == TRUE) {
-    return(unlist(outnames_list_A1))
+    sen2r_output <- unlist(outnames_list_A1)
+    attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+    return(sen2r_output)
   }
   
   # check if some files were not created
@@ -2554,8 +2633,10 @@ sen2r <- function(param_list = NULL,
   names_cloudcovered <- names_cloudcovered[!grepl(tmpdir, names_cloudcovered, fixed=TRUE)]
   
   # Add attributes related to files not created
-  attr(names_out_created, "cloudcovered") <- names_cloudcovered
-  attr(names_out_created, "missing") <- names_missing
+  sen2r_output <- names_out_created
+  attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+  attr(sen2r_output, "cloudcovered") <- names_cloudcovered
+  attr(sen2r_output, "missing") <- names_missing
   
   # Note down the list of non created files (#ignorePath)
   # Sometimes not all the output files are correctly created:
@@ -2602,17 +2683,36 @@ sen2r <- function(param_list = NULL,
     )
   }
   
+  # Log how to recover S2 ordered products / the current processing
+  if (length(nn(s2_list_ordered)) > 0) {
+    print_message(
+      type = "message",
+      "Some Sentinel-2 images, not available for direct download, ",
+      "were correctly ordered from the Long Term Archive. ",
+      "You can check at a later time if the ordered products were made available ",
+      "using the command:\n",
+      '  safe_is_online("',attr(s2_list_ordered, "path"),'")\n',
+      "In case of available products, the processing chain can be completed ",
+      "re-launching it with the command:\n",
+      '  sen2r("',attr(pm, "outpath"),'")'
+    )
+  }
+  
   # Exit
   print_message(
     type = "message",
     date = TRUE,
-    "Execution of sen2r session terminated."
+    "Execution of sen2r session terminated.",
+    if (length(nn(s2_list_ordered)) == 0) {paste0(
+      "\nThe processing chain can be eventually re-launched with the command:\n",
+      '  sen2r("',attr(pm, "outpath"),'")'
+    )}
   )
   
   gc()
   
   # Return output file paths
-  return(invisible(names_out_created))
+  return(invisible(sen2r_output))
   # TODO add also SAFE created files (here and at line #TODO3)
   
 }

@@ -5,6 +5,9 @@ knitr::opts_chunk$set(echo = TRUE)
 #  update.packages(ask = FALSE)
 
 ## ---- eval = FALSE-------------------------------------------------------
+#  install.packages("sen2r")
+
+## ---- eval = FALSE-------------------------------------------------------
 #  install.packages("remotes")
 
 ## ---- eval = FALSE-------------------------------------------------------
@@ -17,6 +20,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## ---- eval = FALSE-------------------------------------------------------
 #  update.packages(ask = FALSE)
+
+## ---- eval = FALSE-------------------------------------------------------
+#  install.packages("sen2r")
 
 ## ---- eval = FALSE-------------------------------------------------------
 #  install.packages("remotes")
@@ -34,6 +40,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## ---- eval = FALSE-------------------------------------------------------
 #  install.packages(c("sp", "sf", "rgdal", "rgeos"), type = "source")
+
+## ---- eval = FALSE-------------------------------------------------------
+#  install.packages("sen2r")
 
 ## ---- eval = FALSE-------------------------------------------------------
 #  install.packages("remotes")

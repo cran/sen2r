@@ -13,7 +13,7 @@
 #' @importFrom jsonlite toJSON
 #' @export
 #' @examples
-#' sen2r:::build_example_param_file()
+#' build_example_param_file()
 
 build_example_param_file <- function(
   json_path = tempfile(fileext = "_sen2r_params.json"),
@@ -48,6 +48,7 @@ build_example_param_file <- function(
         "s2_levels" = c("l1c", "l2a"),
         "sel_sensor" = c("s2a", "s2b"),
         "online" = TRUE,
+        "order_lta" = TRUE,
         "downloader" = "builtin",
         "overwrite_safe" = FALSE,
         "rm_safe" = "no",
@@ -58,11 +59,10 @@ build_example_param_file <- function(
         "extent" = system.file("extdata/vector/barbellino.geojson", package = "sen2r"),
         "s2tiles_selected" = NA,
         "s2orbits_selected" = NA,
-        "list_prods" = c("TOA", "BOA", "SCL"),
+        "list_prods" = c("BOA", "SCL"),
         "list_indices" = c("MSAVI2", "NDVI"),
-        "list_rgb" = c("RGB432B", "RGB432T", "RGB843B"),
+        "list_rgb" = c("RGB432B", "RGB843B"),
         "rgb_ranges" = list(
-          c(0, 2500),
           c(0, 2500),
           matrix(c(0, 0, 0, 7500, 2500, 2500), ncol = 2)
         ),

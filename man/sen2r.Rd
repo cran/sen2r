@@ -6,21 +6,22 @@
 \usage{
 sen2r(param_list = NULL, gui = NA, preprocess = TRUE,
   s2_levels = c("l1c", "l2a"), sel_sensor = c("s2a", "s2b"),
-  online = TRUE, apihub = NA, downloader = "builtin",
-  overwrite_safe = FALSE, rm_safe = "no", step_atmcorr = "auto",
-  max_cloud_safe = 100, timewindow = NA, timeperiod = "full",
-  extent = NA, extent_name = "sen2r", s2tiles_selected = NA,
-  s2orbits_selected = NA, list_prods = NA, list_rgb = NA,
-  list_indices = NA, index_source = "BOA", rgb_ranges = NA,
-  mask_type = NA, max_mask = 100, mask_smooth = 0, mask_buffer = 0,
-  clip_on_extent = TRUE, extent_as_mask = FALSE, reference_path = NA,
-  res = NA, res_s2 = "10m", unit = "Meter", proj = NA,
-  resampling = "near", resampling_scl = "near", outformat = "GTiff",
-  rgb_outformat = "GTiff", index_datatype = "Int16",
-  compression = "DEFLATE", rgb_compression = "90", overwrite = FALSE,
-  path_l1c = NA, path_l2a = NA, path_tiles = NA, path_merged = NA,
-  path_out = NA, path_rgb = NA, path_indices = NA,
-  path_subdirs = TRUE, thumbnails = TRUE, parallel = FALSE,
+  online = TRUE, order_lta = TRUE, apihub = NA,
+  downloader = "builtin", overwrite_safe = FALSE, rm_safe = "no",
+  step_atmcorr = "auto", max_cloud_safe = 100, timewindow = NA,
+  timeperiod = "full", extent = NA, extent_name = "sen2r",
+  s2tiles_selected = NA, s2orbits_selected = NA, list_prods = NA,
+  list_rgb = NA, list_indices = NA, index_source = "BOA",
+  rgb_ranges = NA, mask_type = NA, max_mask = 100, mask_smooth = 0,
+  mask_buffer = 0, clip_on_extent = TRUE, extent_as_mask = FALSE,
+  reference_path = NA, res = NA, res_s2 = "10m", unit = "Meter",
+  proj = NA, resampling = "near", resampling_scl = "near",
+  outformat = "GTiff", rgb_outformat = "GTiff",
+  index_datatype = "Int16", compression = "DEFLATE",
+  rgb_compression = "90", overwrite = FALSE, path_l1c = NA,
+  path_l2a = NA, path_tiles = NA, path_merged = NA, path_out = NA,
+  path_rgb = NA, path_indices = NA, path_subdirs = TRUE,
+  thumbnails = TRUE, parallel = FALSE,
   processing_order = "by_groups", use_python = TRUE, tmpdir = NA,
   rmtmp = TRUE, log = NA)
 }
@@ -61,6 +62,10 @@ Accepted values: "s2a" and "s2b"; default: c("s2a","s2b").}
 \item{online}{(optional) Logical: TRUE (default) to search for available
 products on SciHub (and download if needed); FALSE to work
 only with already downloaded SAFE products.}
+
+\item{order_lta}{(optional) Logical: TRUE (default) to order products from
+the Long Term Archive if unavailable for direct download; FALSE to simply
+skip them (this option has effect only in online mode).}
 
 \item{apihub}{Path of the text file containing credentials
 of SciHub account.
@@ -383,11 +388,16 @@ is the path for messages, the second one for the output.}
 \value{
 A vector with the paths of the files which were created (excluded
 the temporary files); NULL otherwise.
-The vector includes two attributes:
+The vector includes some attributes:
 \itemize{
 \item \code{cloudcovered} with the list of images not created due to the higher
 percentage of cloud covered pixels;
-\item \code{missing} with the list of images not created due to other reasons.
+\item \code{missing} with the list of images not created due to other reasons;
+\item \code{procpath} with the path of a json parameter file, created after each
+\code{sen2r()} run, containing the parameters used in the execution of the
+function;
+\item \code{ltapath} with the path of a json file containing the list of the
+SAFE Sentinel-2 archives eventually ordered in Long Term Archive.
 }
 }
 \description{
@@ -406,7 +416,7 @@ if (interactive()) {
 
 # Launch a processing from a saved JSON file (here we use an internal function
 # to create a testing json file - this is not intended to be used by final users)
-json_path <- sen2r:::build_example_param_file()
+json_path <- build_example_param_file()
 
 out_paths_2 <- sen2r(json_path)
 # Notice that passing the path of a JSON file results in launching
@@ -450,8 +460,7 @@ thumb_4 <- file.path(dirname(out_paths_4), "thumbnails", gsub("tif$", "jpg", bas
 thumb_4[grep("SCL", thumb_4)] <-
   gsub("jpg$", "png", thumb_4[grep("SCL", thumb_4)])
   
-oldpar <- par(mfrow = c(1,3), mar = rep(0,4))
-image(stars::read_stars(thumb_2[grep("TOA", thumb_2)]), rgb = 1:3)
+oldpar <- par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_2[grep("BOA", thumb_2)]), rgb = 1:3)
 image(stars::read_stars(thumb_2[grep("SCL", thumb_2)]), rgb = 1:3)
 
@@ -459,13 +468,11 @@ par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_2[grep("MSAVI2", thumb_2)]), rgb = 1:3)
 image(stars::read_stars(thumb_2[grep("NDVI", thumb_2)]), rgb = 1:3)
 
-par(mfrow = c(1,3), mar = rep(0,4))
-image(stars::read_stars(thumb_2[grep("RGB432T", thumb_2)]), rgb = 1:3)
+par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_2[grep("RGB432B", thumb_2)]), rgb = 1:3)
 image(stars::read_stars(thumb_2[grep("RGB843B", thumb_2)]), rgb = 1:3)
 
-par(mfrow = c(1,3), mar = rep(0,4))
-image(stars::read_stars(thumb_4[grep("TOA", thumb_4)]), rgb = 1:3)
+par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_4[grep("BOA", thumb_4)]), rgb = 1:3)
 image(stars::read_stars(thumb_4[grep("SCL", thumb_4)]), rgb = 1:3)
 
@@ -473,8 +480,7 @@ par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_4[grep("MSAVI2", thumb_4)]), rgb = 1:3)
 image(stars::read_stars(thumb_4[grep("NDVI", thumb_4)]), rgb = 1:3)
 
-par(mfrow = c(1,3), mar = rep(0,4))
-image(stars::read_stars(thumb_4[grep("RGB432T", thumb_4)]), rgb = 1:3)
+par(mfrow = c(1,2), mar = rep(0,4))
 image(stars::read_stars(thumb_4[grep("RGB432B", thumb_4)]), rgb = 1:3)
 image(stars::read_stars(thumb_4[grep("RGB843B", thumb_4)]), rgb = 1:3)
 

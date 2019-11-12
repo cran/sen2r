@@ -25,13 +25,23 @@
 #'  If NA (default), the default location inside the package will be used.
 #' @param max_cloud Integer number (0-100) containing the maximum cloud
 #'  level of the tiles to be listed (default: no filter).
-#' @param output_type Character: if 'vector' (default), the function returns
-#'  a vector or URLs, whose names are the SAFE names;
-#'  if 'data.table', the output is a data.table with metadata.
-#' @return Depending on the value of argument `output_type``,
-#'  a vector of available products (being each element an URL
-#'  and its name the product name), or a data.table with product metadata.
-#'
+#' @param availability Character argument, determining which products have
+#'  to be returned: 
+#'  - "online" : only archive names already available for download are returned;
+#'  - "lta": only archive names stored in the Long Term Archive
+#'      (see https://scihub.copernicus.eu/userguide/LongTermArchive)
+#'      are returned;
+#'  - "check": all archive names are returned, checking if they are
+#'      available or not for download (see "Value" to know 
+#'      how to distinguish each other);
+#'  - "ignore" (default): all archive names are returned, without doing the check
+#'      (running the function is faster).
+#' @param output_type Deprecated (use `as.data.table` to obtain a data.table).
+#' @return An object of class [safelist].
+#'  The attribute `online` contains logical values: in case 
+#'  `availability != "ignore"`, values are TRUE / FALSE for
+#'  products available for download / stored in the Long Term Archive; 
+#'  otherwise, values are set to NA.
 #' @author Lorenzo Busetto, phD (2019) \email{lbusett@@gmail.com} - Inspired by 
 #'  function `getSentinel_query` of package `getSpatialData` by J. Schwalb-Willmann
 #'  (https://github.com/16EAGLE/getSpatialData)
@@ -62,9 +72,7 @@
 #' )
 #' print(example_s2_list)
 #' # Print the dates of the retrieved products
-#' as.vector(sort(sapply(names(example_s2_list), function(x) {
-#'   strftime(safe_getMetadata(x,"nameinfo")$sensing_datetime)
-#' })))
+#' safe_getMetadata(example_s2_list, "sensing_datetime")
 #'
 #' # Seasonal-period list
 #' example_s2_list <- s2_list(
@@ -75,9 +83,7 @@
 #' )
 #' print(example_s2_list)
 #' # Print the dates of the retrieved products
-#' as.vector(sort(sapply(names(example_s2_list), function(x) {
-#'   strftime(safe_getMetadata(x,"nameinfo")$sensing_datetime)
-#' })))
+#' safe_getMetadata(example_s2_list, "sensing_datetime")
 #' }
 
 s2_list <- function(spatial_extent = NULL,
@@ -88,7 +94,8 @@ s2_list <- function(spatial_extent = NULL,
                     level = "auto",
                     apihub = NA,
                     max_cloud = 100,
-                    output_type = "vector") {
+                    availability = "ignore",
+                    output_type = "deprecated") {
   
   if (!level %in% c("auto", "L2A", "L1C")) {
     print_message(
@@ -104,7 +111,15 @@ s2_list <- function(spatial_extent = NULL,
     )
   }
   
-  if (inherits(try(as.Date(time_interval)), "try-error")) {
+  if (!availability %in% c("ignore", "check", "online", "lta")) {
+    print_message(
+      type = "error",
+      "`availability` must be one among \"online\", \"lta\", ",
+      "\"check\" and \"ignore\""
+    )
+  }
+  
+  if (inherits(try(as.Date(time_interval), silent = TRUE), "try-error")) {
     print_message(
       type = "error",
       "`time_interval` must be of class `Date`, `POSIXct` or `character` ",
@@ -113,7 +128,7 @@ s2_list <- function(spatial_extent = NULL,
   }
   
   # to avoid NOTE on check
-  . <- i <- NULL
+  . <- i <- online <- NULL
   
   # convert input NA arguments in NULL
   for (a in c("spatial_extent","tile","orbit","time_interval","apihub")) {
@@ -282,7 +297,7 @@ s2_list <- function(spatial_extent = NULL,
         'start=', start,
         '&rows=', rows,
         '&q=', foot,
-        ' AND platformname:Sentinel-2 ',
+        ' AND platformname:Sentinel-2',
         ' AND beginposition:[', time_intervals[t_int,1], 'T00:00:00.000Z',
         ' TO ', time_intervals[t_int,2], 'T23:59:59.000Z]',
         ' AND cloudcoverpercentage:[0 TO ', max_cloud,']'
@@ -305,52 +320,59 @@ s2_list <- function(spatial_extent = NULL,
         if (length(which(grepl("<link href=", in_entry[[1]]))) != 0) {
           
           in_entry <- in_entry[[1]]
-          
+
           title <- in_entry[which(grepl("<title>", in_entry))] %>%
             gsub("^.*<title>([^<]+)</title>.*$", "\\1", .)
           
           url <- in_entry[which(grepl("<link href=", in_entry))] %>%
             gsub("^.*<link href=\"([^\"]+)\"/>.*$", "\\1", .)
           
-          orbitid <- in_entry[which(grepl("relativeorbitnumber", in_entry))] %>%
+          id_orbit <- in_entry[which(grepl("relativeorbitnumber", in_entry))] %>%
             gsub("^.*<int name=\"relativeorbitnumber\">([^<]+)</int>.*$", "\\1", .) %>%
             as.numeric() %>% sprintf("%03i", .)
           
-          ccov <- in_entry[which(grepl("cloudcoverpercentage", in_entry))] %>%
+          clouds <- in_entry[which(grepl("cloudcoverpercentage", in_entry))] %>%
             gsub("^.*<double name=\"cloudcoverpercentage\">([^<]+)</double>.*$", "\\1", .) %>%
             as.numeric()
           
-          proclev <- in_entry[which(grepl("processinglevel", in_entry))] %>%
-            gsub("^.*<str name=\"processinglevel\">([^<]+)</str>.*$", "\\1", .)
+          proc_level <- in_entry[which(grepl("processinglevel", in_entry))] %>%
+            gsub("^.*<str name=\"processinglevel\">Level\\-([^<]+)</str>.*$", "\\1", .)
           
-          sensor <- in_entry[which(grepl("platformserialidentifier", in_entry))] %>%
-            gsub("^.*<str name=\"platformserialidentifier\">([^<]+)</str>.*$", "\\1", .)
+          mission <- in_entry[which(grepl("platformserialidentifier", in_entry))] %>%
+            gsub("^.*<str name=\"platformserialidentifier\">Sentinel\\-([^<]+)</str>.*$", "\\1", .)
           
-          tileid <- in_entry[which(grepl("name=\"tileid\"", in_entry))] %>%
-            gsub("^.*<str name=\"tileid\">([^<]+)</str>.*$", "\\1", .)
+          # id_tile <- in_entry[which(grepl("name=\"tileid\"", in_entry))] %>%
+          #   gsub("^.*<str name=\"tileid\">([^<]+)</str>.*$", "\\1", .)
+          id_tile <- gsub("^.+_T([0-9]{2}[A-Z]{3})_.+$", "\\1", title)
           
-          sensdate <- in_entry[which(grepl("name=\"endposition\"", in_entry))] %>%
-            gsub("^.*<date name=\"endposition\">([0-9\\-]+)T[0-9\\:\\.]+Z</date>.*$", "\\1", .) %>%
-            as.Date()
+          # sensing_datetime <- in_entry[which(grepl("name=\"endposition\"", in_entry))] %>%
+          #   gsub("^.*<date name=\"endposition\">([0-9\\-]+)T[0-9\\:\\.]+Z</date>.*$", "\\1", .) %>%
+          #   as.POSIXct()
+          sensing_datetime <- gsub(
+            "^S2[AB]\\_MSIL[12][AC]\\_([0-9]{8}T[0-9]{6})\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}$",
+            "\\1", title
+          ) %>% as.POSIXct(format = "%Y%m%dT%H%M%S", tz = "UTC")
           
-          proctime <- in_entry[which(grepl("name=\"ingestiondate\"", in_entry))] %>%
+          creation_datetime <- gsub(
+            "^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_([0-9]{8}T[0-9]{6})$",
+            "\\1", title
+          ) %>% as.POSIXct(format = "%Y%m%dT%H%M%S", tz = "UTC")
+          
+          ingestion_datetime <- in_entry[which(grepl("name=\"ingestiondate\"", in_entry))] %>%
             gsub("^.*<date name=\"ingestiondate\">([0-9\\-]+)T([0-9\\:\\.]+)Z</date>.*$", "\\1 \\2", .) %>%
-            as.POSIXct()
+            as.POSIXct(tz = "UTC")
           
-          if (length(tileid) == 0 ) {
-            tileid <- gsub("^.+_T([0-9]{2}[A-Z]{3})_.+$", "\\1", title)
-          }
           # print(paste0(title, ".SAFE"))
           out_list[[n_entries]] <- data.frame(
             name = paste0(title, ".SAFE"),
             url = url,
-            orbitid = orbitid,
-            date = sensdate,
-            proctime = proctime,
-            ccov = ccov,
-            proclev = proclev,
-            sensor = sensor,
-            tileid = tileid,
+            mission = mission,
+            level = proc_level,
+            id_tile = id_tile,
+            id_orbit = id_orbit,
+            sensing_datetime = sensing_datetime,
+            ingestion_datetime = ingestion_datetime,
+            clouds = clouds,
             stringsAsFactors = FALSE
           )
           n_entries <- n_entries + 1
@@ -367,38 +389,56 @@ s2_list <- function(spatial_extent = NULL,
   }
   out_dt <- rbindlist(out_list)
   
-  if (nrow(out_dt) == 0) {return(character(0))}
+  if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
+  
+  # check online availability
+  out_dt$online <- if (availability == "ignore") {
+    NA
+  } else {
+    as.logical(safe_is_online(out_dt))
+  }
   
   # remove "wrong" tiles and orbits if needed
   if (!is.null(tile)) {
-    out_dt <- out_dt[tileid %in% tile,]
+    out_dt <- out_dt[id_tile %in% tile,]
   } else {
     sel_s2tiles <- suppressMessages(suppressWarnings(
       sf::st_intersection(s2tiles, spatial_extent_or)))
-    out_dt <- out_dt[tileid %in% unique(sel_s2tiles$tile_id),]
+    out_dt <- out_dt[id_tile %in% unique(sel_s2tiles$tile_id),]
   }
   
   if (!is.null(orbit)) {
-    out_dt <- out_dt[orbitid %in% sprintf("%03i", as.numeric(orbit)),]
+    out_dt <- out_dt[id_orbit %in% sprintf("%03i", as.numeric(orbit)),]
   }
   
-  if (nrow(out_dt) == 0) {return(character(0))}
+  if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
   if (level == "L1C") {
-    out_dt <- out_dt[proclev == "Level-1C",]
+    out_dt <- out_dt[level == "1C",]
   } else if (level == "L2A") {
-    out_dt <- out_dt[grepl("^Level-2Ap?$", proclev),]
+    out_dt <- out_dt[grepl("^2Ap?$", level),]
   } else if (level == "auto") {
-    out_dt <- out_dt[order(-proclev,-proctime),]
-    out_dt <- out_dt[,head(.SD, 1), by = .(date, tileid, orbitid)]
+    out_dt <- out_dt[order(-level,-ingestion_datetime),]
+    out_dt <- out_dt[,head(.SD, 1), by = .(sensing_datetime, id_tile, id_orbit)]
+    out_dt <- out_dt[,c(names(out_list[[1]]),"online"),with=FALSE]
   }
-  if (nrow(out_dt) == 0) {return(character(0))}
-  out_dt <- out_dt[order(date),]
+  if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
+  out_dt <- out_dt[order(sensing_datetime),]
   
-  if (output_type == "data.table") {
-    return(out_dt)
+  # filter by availability
+  if (availability == "online") {
+    out_dt <- out_dt[online == TRUE,]
+  } else if (availability == "lta") {
+    out_dt <- out_dt[online == FALSE,]
+  }
+  
+  # return output
+  if (output_type =="data.table") { # deprecated
+    out_dt
+  } else if (output_type =="data.frame") { # deprecated
+    as.data.frame(out_dt)
+  } else if (output_type =="vector") { # deprecated
+    as.character(as(out_dt, "safelist"))
   } else {
-    out_vector <- out_dt$url
-    names(out_vector) <- out_dt$name
-    return(out_vector)
+    as(out_dt, "safelist")
   }
 }

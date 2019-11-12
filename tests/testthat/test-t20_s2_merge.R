@@ -13,7 +13,7 @@ testthat::test_that(
     dir.create(dirname(outdir_1), showWarnings = FALSE)
     exp_outpath_1 <- file.path(outdir_1, "SCL", "S2A2A_20170703_022__SCL_10.tif")
     unlink(exp_outpath_1)
-    sen2r(
+    out1 <- sen2r(
       gui = FALSE,
       online = FALSE,
       step_atmcorr = "l2a", # to avoid checks on Sen2Cor
@@ -29,17 +29,20 @@ testthat::test_that(
     )
     expect_true(file.exists(exp_outpath_1))
     
+    # check sen2r output format
+    testthat::expect_is(out1, "character")
+    testthat::expect_equivalent(out1, exp_outpath_1)
+    testthat::expect_equal(names(attributes(out1)), c("procpath", "cloudcovered", "missing"))
+    
     # test on raster metadata
     exp_meta_r <- raster_metadata(exp_outpath_1, format = "list")[[1]]
     testthat::expect_equal(exp_meta_r$size, c("x"=5490, "y"=10491))
     testthat::expect_equal(exp_meta_r$res, c("x"=20, "y"=20))
     testthat::expect_equal(
-      exp_meta_r$bbox, 
-      sf::st_bbox(
-        c("xmin" = 499980, "ymin" = 4990200, "xmax" = 609780, "ymax" = 5200020), 
-        crs = sf::st_crs(32632)
-      )
+      as.numeric(exp_meta_r$bbox), 
+      c(499980, 4990200, 609780, 5200020)
     )
+    testthat::expect_equal(exp_meta_r$proj$epsg, 32632)
     testthat::expect_equal(exp_meta_r$outformat, "GTiff") # default value
     
     # tests on sen2r metadata

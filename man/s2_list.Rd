@@ -7,7 +7,7 @@
 s2_list(spatial_extent = NULL, tile = NULL, orbit = NULL,
   time_interval = c(Sys.Date() - 10, Sys.Date()), time_period = "full",
   level = "auto", apihub = NA, max_cloud = 100,
-  output_type = "vector")
+  availability = "ignore", output_type = "deprecated")
 }
 \arguments{
 \item{spatial_extent}{A valid spatial object object of class \code{sf},
@@ -44,14 +44,28 @@ If NA (default), the default location inside the package will be used.}
 \item{max_cloud}{Integer number (0-100) containing the maximum cloud
 level of the tiles to be listed (default: no filter).}
 
-\item{output_type}{Character: if 'vector' (default), the function returns
-a vector or URLs, whose names are the SAFE names;
-if 'data.table', the output is a data.table with metadata.}
+\item{availability}{Character argument, determining which products have
+to be returned:
+\itemize{
+\item "online" : only archive names already available for download are returned;
+\item "lta": only archive names stored in the Long Term Archive
+(see https://scihub.copernicus.eu/userguide/LongTermArchive)
+are returned;
+\item "check": all archive names are returned, checking if they are
+available or not for download (see "Value" to know
+how to distinguish each other);
+\item "ignore" (default): all archive names are returned, without doing the check
+(running the function is faster).
+}}
+
+\item{output_type}{Deprecated (use \code{as.data.table} to obtain a data.table).}
 }
 \value{
-Depending on the value of argument `output_type``,
-a vector of available products (being each element an URL
-and its name the product name), or a data.table with product metadata.
+An object of class \link{safelist}.
+The attribute \code{online} contains logical values: in case
+\code{availability != "ignore"}, values are TRUE / FALSE for
+products available for download / stored in the Long Term Archive;
+otherwise, values are set to NA.
 }
 \description{
 The function retrieves the list of available Sentinel-2
@@ -74,9 +88,7 @@ example_s2_list <- s2_list(
 )
 print(example_s2_list)
 # Print the dates of the retrieved products
-as.vector(sort(sapply(names(example_s2_list), function(x) {
-  strftime(safe_getMetadata(x,"nameinfo")$sensing_datetime)
-})))
+safe_getMetadata(example_s2_list, "sensing_datetime")
 
 # Seasonal-period list
 example_s2_list <- s2_list(
@@ -87,9 +99,7 @@ example_s2_list <- s2_list(
 )
 print(example_s2_list)
 # Print the dates of the retrieved products
-as.vector(sort(sapply(names(example_s2_list), function(x) {
-  strftime(safe_getMetadata(x,"nameinfo")$sensing_datetime)
-})))
+safe_getMetadata(example_s2_list, "sensing_datetime")
 }
 }
 \author{

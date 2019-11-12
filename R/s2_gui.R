@@ -351,7 +351,7 @@ s2_gui <- function(param_list = NULL,
                   choiceNames = list("Online", "Offline"),
                   choiceValues = list(TRUE, FALSE),
                   selected = TRUE,
-                  inline = FALSE
+                  inline = TRUE
                 ),
                 
                 # SciHub credentials
@@ -359,10 +359,18 @@ s2_gui <- function(param_list = NULL,
                   condition = "input.online == 'TRUE'",
                   div(
                     style = "padding-bottom:10px;",
+                    checkboxInput(
+                      "make_lta_order",
+                      label = span(
+                        "Order from LTA\u2000",
+                        actionLink("help_lta_order", icon("question-circle"))
+                      ),
+                      value = TRUE
+                    ),
                     actionButton(
                       "scihub_md",
                       label = "\u2000Login to SciHub",
-                      icon=icon("user-circle")
+                      icon = icon("user-circle")
                     )
                   )
                 )
@@ -2633,6 +2641,37 @@ s2_gui <- function(param_list = NULL,
       ))
     })
     
+    observeEvent(input$help_lta_order, {
+      showModal(modalDialog(
+        title = "Order from LTA",
+        p(HTML(
+          "Starting from September 2019, SAFE archives older than 12 months",
+          "(Level-1C) or 18 months (Level-2A) are generally not available",
+          "for direct download, but must be ordered from the Long Term Archive",
+          "(see <a href='https://inthub.copernicus.eu/userguide/LongTermArchive'",
+          "target='_blank'>this page</a> for any details)."
+        )),
+        p(HTML(
+          "Checking this option, products which are not available for direct",
+          "download are ordered, so to be available at a later time.",
+          "There is no way to know when the will be made available; the user",
+          "can re-launch the same sen2r processing chain at a later time:",
+          "in this way, when missing SAFE archives will be made available",
+          "they will be downloaded and the output prodcut archive will be updated."
+        )),
+        p(HTML(
+          "Alternatively, specific non-interactive functions are available",
+          "to manage orders (see",
+          "<a href='https://sen2r.ranghetti.info/reference/safe_is_online.html'",
+          "target='_blank'><tt>safe_is_online()</tt></a> and",
+          "<a href='https://sen2r.ranghetti.info/reference/s2_order.html'",
+          "target='_blank'><tt>s2_order()</tt></a>)."
+        )),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    })
+    
     observeEvent(input$help_downloader, {
       showModal(modalDialog(
         title = "Downloader",
@@ -2690,10 +2729,7 @@ s2_gui <- function(param_list = NULL,
         title = "SciHub username and password",
         p(HTML(
           "For security reasons, the SciHub username and password",
-          "are not saved with the other parameters."
-        )),
-        p(HTML(
-          "By default, they are stored in a txt file inside the package,",
+          "are not saved with the other parameters, but in a dedicated txt file,",
           "so to be the same for all the sen2r executions",
           "(the user have to set them only once)."
         )),
@@ -2707,6 +2743,26 @@ s2_gui <- function(param_list = NULL,
           "(the path of the text file - and not the content - is added inside",
           "the parameter file)."
         )),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    })
+    
+    observeEvent(input$help_register_scihub, {
+      showModal(modalDialog(
+        title = "New/edit SciHub credentials",
+        size = "s",
+        p(HTML(
+          "Notice that SciHub credentials are recognised by API Hub",
+          "(used by sen2r) with a delay of one week (see",
+          "<a href='https://scihub.copernicus.eu/twiki/do/view/SciHubWebPortal/APIHubDescription'",
+          "target='_blank'>this alert</a>);",
+          "for this reason, newly created credentials and password edits",
+          "are generally not immediately recognised."
+        )),
+        a("Register new account", href="https://scihub.copernicus.eu/dhus/#/self-registration", target="_blank"),
+        "\u2000\u2014\u2000",
+        a("Forgot password?", href="https://scihub.copernicus.eu/dhus/#/forgot-password", target="_blank"),
         easyClose = TRUE,
         footer = NULL
       ))
@@ -3363,11 +3419,12 @@ s2_gui <- function(param_list = NULL,
       rl$s2_levels <- c(if(safe_req$l1c==TRUE){"l1c"}, if(safe_req$l2a==TRUE){"l2a"}) # required S2 levels ("l1c","l2a")
       rl$sel_sensor <- input$sel_sensor # sensors to use ("s2a", "s2b")
       rl$online <- as.logical(input$online) # TRUE if online mode, FALSE if offline mode
+      rl$order_lta <- as.logical(input$make_lta_order) # TRUE to order from LTA, FALSE to skip
       rl$downloader <- input$downloader # downloader ("builtin" or "aria2")
       rl$overwrite_safe <- as.logical(input$overwrite_safe) # TRUE to overwrite existing SAFE, FALSE not to
       rl$rm_safe <- input$rm_safe # "yes" to delete all SAFE, "l1c" to delete only l1c, "no" not to remove
       rl$max_cloud_safe <- input$max_cloud_safe_perc # maximum SAFE cloud coverage (0-100)
-      rl$step_atmcorr <- if (safe_req$l2a==TRUE) {input$step_atmcorr} else {"no"} # download_method in sen2cor: "auto", "l2a", "scihub" or "no"
+      rl$step_atmcorr <- if (safe_req$l2a==TRUE) {input$step_atmcorr} else {"l2a"} # download_method in sen2cor: "auto", "l2a" or "scihub"
       # rl$steps_reqout <- input$steps_reqout # vector of required outputs: "safe", "tiles", "clipped" (one or more)
       
       # spatio-temporal selection #
@@ -3519,6 +3576,7 @@ s2_gui <- function(param_list = NULL,
         updateCheckboxGroupInput(session, "list_levels", selected = pl$s2_levels)
         updateCheckboxGroupInput(session, "sel_sensor", selected = pl$sel_sensor)
         updateRadioButtons(session, "online", selected = pl$online)
+        updateRadioButtons(session, "make_lta_order", selected = pl$order_lta)
         updateRadioButtons(session, "downloader", selected = pl$downloader)
         updateRadioButtons(session, "overwrite_safe", selected = pl$overwrite_safe)
         updateRadioButtons(session, "rm_safe", selected = pl$rm_safe)
@@ -3692,7 +3750,7 @@ s2_gui <- function(param_list = NULL,
         sendSweetAlert(
           session, NULL,
           paste0(
-            "Please select at least one product, spectral index or RGB image",
+            "Please select at least one product, spectral index or RGB image ",
             "before continuing."
           ),
           type = "error"

@@ -26,12 +26,9 @@
 #'  (in target georeferenced units). If bot `ref` and `tr` are provided,
 #'  `tr` is rounded in order to match the exact extent.
 #' @param t_srs Target spatial reference set (character). The coordinate
-#'  systems that can be passed are anything supported by the
-#'  OGRSpatialReference.SetFromUserInput() call, which includes EPSG
-#'  PCS and GCSes (i.e. EPSG:4296), PROJ.4 declarations (as above),
-#'  or the name of a .prf file containing well known text.
-#' @param r Resampling_method ("near"|"bilinear"|"cubic"|"cubicspline"|
-#' "lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3").
+#'  systems that can be passed are anything supported by [st_crs2].
+#' @param r Resampling_method (`"near"`|`"bilinear"`|`"cubic"`|`"cubicspline"`|
+#' `"lanczos"`|`"average"`|`"mode"`|`"max"`|`"min"`|`"med"`|`"q1"`|`"q3"``).
 #' @param dstnodata Set nodata values for output bands (different values
 #'  can be supplied for each band). If more than one value is supplied
 #'  all values should be quoted to keep them together as a single
@@ -55,9 +52,9 @@
 #' @export
 #' @importFrom sf st_transform st_geometry st_geometry_type st_write st_cast st_zm
 #'  st_area st_bbox st_sfc st_sf st_polygon st_as_sf st_as_sfc st_as_sf st_crs
-#' @importFrom methods as
+#'  st_as_text
+#' @importFrom methods is
 #' @importFrom stars read_stars
-#' @importFrom magrittr "%>%"
 #' @importFrom units ud_units
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
 #' @note License: GPL 3.0
@@ -106,15 +103,15 @@
 #'
 #' # Reproject all the input file
 #' test4 <- tempfile(fileext = "_test4.tif")
-#' gdal_warp(ex_sel, test4, t_srs = "+init=epsg:32631")
+#' gdal_warp(ex_sel, test4, t_srs = 32631)
 #'
 #' # Reproject and clip on a bounding box
 #' test5 <- tempfile(fileext = "_test5.tif")
-#' gdal_warp(ex_sel, test5, t_srs = "+init=epsg:32631", mask = stars::read_stars(test1))
+#' gdal_warp(ex_sel, test5, t_srs = "EPSG:32631", mask = stars::read_stars(test1))
 #'
 #' # Reproject and clip on polygon (masking outside)
 #' test6 <- tempfile(fileext = "_test6.tif")
-#' gdal_warp(ex_sel, test6, t_srs = "+init=epsg:32631", mask = crop_poly)
+#' gdal_warp(ex_sel, test6, t_srs = "31N", mask = crop_poly)
 #'
 #' # Show output
 #' crop_line_31N <- sf::st_transform(crop_line, 32631)
@@ -200,17 +197,16 @@ gdal_warp <- function(srcfiles,
   }
   
   # check t_srs
-  if (!is.null(t_srs)) {
-    if (is(t_srs, "crs")) {
-      t_srs <- t_srs$proj4string
-    } else if (!is.na(st_crs(t_srs)$proj4string)) {
-      t_srs <- st_crs(t_srs)$proj4string
-    } else {
-      print_message(
-        type = "error",
-        "The input CRS (",t_srs,") was not recognised."
-      )
-    }
+  if (all(!is.null(t_srs), !is(t_srs, "crs"))) {
+    tryCatch(
+      t_srs <- st_crs2(t_srs),
+      error = function (e) {
+        print_message(
+          type = "error",
+          "The input CRS (",t_srs,") was not recognised."
+        )
+      }
+    )
   }
   
   # check output format
@@ -237,7 +233,7 @@ gdal_warp <- function(srcfiles,
     ref_metadata <- raster_metadata(ref, format = "list")[[1]]
     ref_res <- ref_metadata$res
     ref_size <- ref_metadata$size
-    t_srs <- ref_metadata$proj$proj4string
+    t_srs <- ref_metadata$proj
     ref_bbox <- ref_metadata$bbox
     ref_ll <- ref_bbox[c("xmin","ymin")]
     sel_of <- ifelse(is.null(of), ref_metadata$outformat, of)
@@ -250,27 +246,36 @@ gdal_warp <- function(srcfiles,
     }
   }
   
+  # define tmpdir 
+  if (is.na(tmpdir)) {
+    tmpdir <- tempfile(pattern="gdalwarp_")
+  } else if (dir.exists(tmpdir)) {
+    tmpdir <- file.path(tmpdir, basename(tempfile(pattern="gdalwarp_")))
+  }
+  
   # if "mask" is specified, take "mask" and "te" from it
   if (!is.null(mask)) {
-    mask <- if (is(mask, "sf") | is(mask, "sfc")) {
-      st_sf(mask)
-    } else if (is(mask, "Spatial")) {
-      st_as_sf(mask)
-    } else if (is(mask, "Raster") | is(mask, "stars")) {
-      st_as_sfc(st_bbox(mask))
-    } else if (is(mask, "character")) {
-      mask0 <- try(st_read(mask, quiet=TRUE), silent = TRUE)
-      if (is(mask0, "sf")) {
-        mask0
-      } else {
-        mask1 <- try(read_stars(mask, proxy=TRUE), silent = TRUE)
-        if (is(mask0, "stars")) {
-          st_as_sfc(st_bbox(mask1))
+    mask <- st_zm(
+      if (is(mask, "sf") | is(mask, "sfc")) {
+        st_sf(mask)
+      } else if (is(mask, "Spatial")) {
+        st_as_sf(mask)
+      } else if (is(mask, "Raster") | is(mask, "stars")) {
+        st_as_sfc(st_bbox(mask))
+      } else if (is(mask, "character")) {
+        mask0 <- try(st_read(mask, quiet=TRUE), silent = TRUE)
+        if (is(mask0, "sf")) {
+          mask0
         } else {
-          stop("'mask' is not a recognised spatial file.")
+          mask1 <- try(read_stars(mask, proxy=TRUE), silent = TRUE)
+          if (is(mask0, "stars")) {
+            st_as_sfc(st_bbox(mask1))
+          } else {
+            stop("'mask' is not a recognised spatial file.")
+          }
         }
-      }
-    } %>% st_zm()
+      } 
+    )
     
     # Check that the polygon is not empty
     if (length(grep("POLYGON",st_geometry_type(mask)))>=1 &
@@ -282,11 +287,6 @@ gdal_warp <- function(srcfiles,
     }
     # cast to multipolygon
     if (length(grep("POLYGON",st_geometry_type(mask)))>=1) {
-      if (is.na(tmpdir)) {
-        tmpdir <- tempfile(pattern="gdalwarp_")
-      } else if (dir.exists(tmpdir)) {
-        tmpdir <- file.path(tmpdir, basename(tempfile(pattern="gdalwarp_")))
-      }
       dir.create(tmpdir, recursive=FALSE, showWarnings=FALSE)
       st_write(
         st_cast(mask, "MULTIPOLYGON"),
@@ -300,11 +300,10 @@ gdal_warp <- function(srcfiles,
     # create mask_bbox if t_srs is specified;
     # otherwise, create each time within srcfile cycle
     if (!is.null(t_srs)) {
-      mask_bbox <- st_transform(mask, t_srs) %>%
-        st_bbox() %>%
+      mask_bbox <- st_bbox(
+        st_transform(mask, t_srs),
         matrix(nrow=2, ncol=2, dimnames=list(c("x","y"),c("min","max")))
-      # extent() %>% bbox()
-      # get_extent() %>% as("matrix")
+      )
     }
   }
   
@@ -324,7 +323,7 @@ gdal_warp <- function(srcfiles,
       sel_metadata <- raster_metadata(srcfile, format = "list")[[1]]
       sel_res <- sel_metadata$res
       sel_size <- sel_metadata$size
-      sel_s_srs <- sel_metadata$proj$proj4string
+      sel_s_srs <- sel_metadata$proj
       sel_bbox <- sel_metadata$bbox
       sel_ll <- sel_bbox[c("xmin","ymin")]
       sel_of <- ifelse(is.null(of), sel_metadata$outformat, of)
@@ -365,15 +364,16 @@ gdal_warp <- function(srcfiles,
           sel_mask_bbox <- if (exists("mask_bbox")) {
             mask_bbox
           } else {
-            st_transform(mask, sel_t_srs) %>%
-              st_bbox() %>%
-              matrix(nrow=2, ncol=2, dimnames=list(c("x","y"),c("min","max")))
-            # get_extent() %>% as("matrix")
+            matrix(
+              st_bbox(st_transform(mask, sel_t_srs)),
+              nrow=2, ncol=2, 
+              dimnames = list(c("x","y"), c("min","max"))
+            )
           }
           if (sel_t_srs == sel_s_srs) {
             sel_te <- (sel_mask_bbox - sel_ll) / sel_tr
             sel_te <- cbind(floor(sel_te[,1]), ceiling(sel_te[,2]))
-            dimnames(sel_te) <- list(c("x","y"),c("min","max"))
+            dimnames(sel_te) <- list(c("x","y"), c("min","max"))
             sel_te <- sel_te * sel_tr + sel_ll
           } else {
             sel_te <- sel_mask_bbox
@@ -398,10 +398,11 @@ gdal_warp <- function(srcfiles,
           sel_mask_bbox <- if (exists("mask_bbox")) {
             mask_bbox
           } else {
-            st_transform(mask, sel_t_srs) %>%
-              st_bbox() %>%
-              matrix(nrow=2, ncol=2, dimnames=list(c("x","y"),c("min","max")))
-            # get_extent() %>% as("matrix")
+            matrix(
+              st_bbox(st_transform(mask, sel_t_srs)),
+              nrow=2, ncol=2, 
+              dimnames = list(c("x","y"), c("min","max"))
+            )
           }
           if (sel_t_srs == sel_s_srs) {
             sel_te <- (sel_mask_bbox - ref_ll) / sel_tr
@@ -417,11 +418,31 @@ gdal_warp <- function(srcfiles,
       # finally, apply gdal_warp or gdal_translate
       # temporary leave only gdal_warp to avoid some problems
       # (e.g., translating a 1001x1001 20m to 10m results in 2002x2002 instead of 200[12]x200[12])
+      sel_s_srs_string <- if (!is.na(sel_s_srs$epsg)) {
+        paste0("EPSG:",sel_s_srs$epsg)
+      } else {
+        dir.create(tmpdir, recursive=FALSE, showWarnings=FALSE)
+        writeLines(
+          st_as_text_2(sel_s_srs),
+          sel_s_srs_path <- tempfile(pattern = "s_srs_", tmpdir = tmpdir, fileext = ".prj")
+        )
+        sel_s_srs_path
+      }
+      sel_t_srs_string <- if (!is.na(sel_t_srs$epsg)) {
+        paste0("EPSG:",sel_t_srs$epsg)
+      } else {
+        dir.create(tmpdir, recursive=FALSE, showWarnings=FALSE)
+        writeLines(
+          st_as_text_2(sel_t_srs),
+          sel_t_srs_path <- tempfile(pattern = "t_srs_", tmpdir = tmpdir, fileext = ".prj")
+        )
+        sel_t_srs_path
+      }
       system(
         paste0(
           binpaths$gdalwarp," ",
-          "-s_srs \"",sel_s_srs,"\" ",
-          "-t_srs \"",sel_t_srs,"\" ",
+          "-s_srs \"",sel_s_srs_string,"\" ",
+          "-t_srs \"",sel_t_srs_string,"\" ",
           "-te ",paste(sel_te, collapse = " ")," ",
           if (exists("mask_file")) {paste0("-cutline \"",mask_file,"\" ")},
           if (!is.null(tr)) {paste0("-tr ",paste(sel_tr, collapse = " ")," ")},

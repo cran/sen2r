@@ -4,26 +4,68 @@
 \alias{sen2r}
 \title{Find, download and preprocess Sentinel-2 images}
 \usage{
-sen2r(param_list = NULL, gui = NA, preprocess = TRUE,
-  s2_levels = c("l1c", "l2a"), sel_sensor = c("s2a", "s2b"),
-  online = TRUE, order_lta = TRUE, apihub = NA,
-  downloader = "builtin", overwrite_safe = FALSE, rm_safe = "no",
-  step_atmcorr = "auto", max_cloud_safe = 100, timewindow = NA,
-  timeperiod = "full", extent = NA, extent_name = "sen2r",
-  s2tiles_selected = NA, s2orbits_selected = NA, list_prods = NA,
-  list_rgb = NA, list_indices = NA, index_source = "BOA",
-  rgb_ranges = NA, mask_type = NA, max_mask = 100, mask_smooth = 0,
-  mask_buffer = 0, clip_on_extent = TRUE, extent_as_mask = FALSE,
-  reference_path = NA, res = NA, res_s2 = "10m", unit = "Meter",
-  proj = NA, resampling = "near", resampling_scl = "near",
-  outformat = "GTiff", rgb_outformat = "GTiff",
-  index_datatype = "Int16", compression = "DEFLATE",
-  rgb_compression = "90", overwrite = FALSE, path_l1c = NA,
-  path_l2a = NA, path_tiles = NA, path_merged = NA, path_out = NA,
-  path_rgb = NA, path_indices = NA, path_subdirs = TRUE,
-  thumbnails = TRUE, parallel = FALSE,
-  processing_order = "by_groups", use_python = TRUE, tmpdir = NA,
-  rmtmp = TRUE, log = NA)
+sen2r(
+  param_list = NULL,
+  gui = NA,
+  preprocess = TRUE,
+  s2_levels = "l2a",
+  sel_sensor = c("s2a", "s2b"),
+  online = TRUE,
+  order_lta = TRUE,
+  apihub = NA,
+  downloader = "builtin",
+  overwrite_safe = FALSE,
+  rm_safe = "no",
+  step_atmcorr = "auto",
+  sen2cor_use_dem = NA,
+  sen2cor_gipp = NA,
+  max_cloud_safe = 100,
+  timewindow = NA,
+  timeperiod = "full",
+  extent = NA,
+  extent_name = "sen2r",
+  s2tiles_selected = NA,
+  s2orbits_selected = NA,
+  list_prods = NA,
+  list_rgb = NA,
+  list_indices = NA,
+  index_source = "BOA",
+  rgb_ranges = NA,
+  mask_type = NA,
+  max_mask = 100,
+  mask_smooth = 0,
+  mask_buffer = 0,
+  clip_on_extent = TRUE,
+  extent_as_mask = FALSE,
+  reference_path = NA,
+  res = NA,
+  res_s2 = "10m",
+  unit = "Meter",
+  proj = NA,
+  resampling = "near",
+  resampling_scl = "near",
+  outformat = "GTiff",
+  rgb_outformat = "GTiff",
+  index_datatype = "Int16",
+  compression = "DEFLATE",
+  rgb_compression = "90",
+  overwrite = FALSE,
+  path_l1c = NA,
+  path_l2a = NA,
+  path_tiles = NA,
+  path_merged = NA,
+  path_out = NA,
+  path_rgb = NA,
+  path_indices = NA,
+  path_subdirs = TRUE,
+  thumbnails = TRUE,
+  parallel = FALSE,
+  processing_order = "by_groups",
+  use_python = NA,
+  tmpdir = NA,
+  rmtmp = TRUE,
+  log = NA
+)
 }
 \arguments{
 \item{param_list}{(optional) List of input parameters:
@@ -88,15 +130,31 @@ not to delete; "l1c" to delete only Level-1C products.}
 \item{step_atmcorr}{(optional) Character vector to determine how to obtain
 Level-2A SAFE products:
 \itemize{
-\item "auto" (default) means that L2A is first
+\item \code{"auto"} (default) means that L2A is first
 searched on SciHub: if found, it is downloaded, if not, the
 corresponding Level-1C is downloaded and sen2cor is used to
 produce L2A;
-\item "scihub" means that Sen2Cor is always used from L1C products
+\item \code{"scihub"} means that Sen2Cor is always used from L1C products
 downloaded from SciHub;
-\item "l2a" means that they are downloaded if available on SciHub,
+\item \code{"l2a"} means that they are downloaded if available on SciHub,
 otherwise they are skipped (sen2cor is never used).
 }}
+
+\item{sen2cor_use_dem}{(optional) Logical, determining if a DEM should be
+used for topographic correction by Sen2Cor (see the documentation of
+\code{\link[=sen2cor]{sen2cor()}} - argument \code{use_dem} for further details).
+Currently the default value is NA in order to grant backward compatibility:
+in this case, the option set in the XML GIPP configuration file
+used by sen2r (stored in the default sen2r settings directory) is respected.
+
+\emph{Note}: in a future release of sen2r, the default value will be
+set to TRUE, so to grant homogeneity between Level-2A products downloaded
+from ESA Hub and generated using Sen2Cor.}
+
+\item{sen2cor_gipp}{(optional) Ground Image Processing Parameters (GIPP)
+to be passed to Sen2Cor (see the documentation of \code{\link[=sen2cor]{sen2cor()}} - argument
+\code{gipp} - for details about the usage of this argument).
+Default value (NA) corresponds to an empty list of parameters.}
 
 \item{max_cloud_safe}{(optional) Integer number (0-100) containing
 the maximum cloud level of each SAFE to be considered (default: no filter).
@@ -187,7 +245,7 @@ for the accepted values). Default (NA) is not to mask.}
 \item{max_mask}{(optional) Numeric value (range 0 to 100), which represents
 the maximum percentage of allowed masked surface (by clouds or any other
 type of mask chosen with argument \code{mask_type}) for producing outputs.
-Images with a percentage of masked surface greater than \code{max_mask}%
+Images with a percentage of masked surface greater than \code{max_mask}\%
 are not processed (the list of expected output files which have not been
 generated is returned as an attribute, named "skipped").
 Default value is 80.
@@ -237,17 +295,18 @@ the default value - is supported).}
 resolution. default value (NA) means not to reproject.}
 
 \item{resampling}{(optional) Resampling method (one of the values supported
-by \code{gdal_translate}: "near" (default), "bilinear", "cubic",
-"cubicspline", "lanczos", "average" or "mode").}
+by \code{gdal_translate}: \code{"near"} (default), \code{"bilinear"}, \code{"cubic"},
+\code{"cubicspline"}, \code{"lanczos"}, \code{"average"} or \code{"mode"}).}
 
 \item{resampling_scl}{(optional) Resampling method for categorical products
-(for now, only SCL): one among "near" (default) and "mode".}
+(for now, only SCL): one among \code{"near"} (default) and \code{"mode"}.}
 
 \item{outformat}{(optional) Format of the output file (in a
-format recognised by GDAL). Default is "GTiff".}
+format recognised by GDAL). Default is \code{"GTiff"}.
+Value \code{"BigTIFF"} can be used to generate a GeoTIFF with the option BigTIFF}
 
 \item{rgb_outformat}{(optional) Format of the output RGB products (in a
-format recognised by GDAL). Default is "GTiff".}
+format recognised by GDAL). Default is \code{"GTiff"}.}
 
 \item{index_datatype}{(optional) Numeric datatype of the output
 spectral indices (see \link{s2_calcindices}.}
@@ -256,9 +315,9 @@ spectral indices (see \link{s2_calcindices}.}
 output format, the compression indicated with this parameter is
 used (default is "DEFLATE").}
 
-\item{rgb_compression}{(optional) In the case GTiff is chosen as
+\item{rgb_compression}{(optional) In the case \code{GTiff} is chosen as
 output format for RGB products, the compression indicated
-with this parameter is used (default is "DEFLATE").
+with this parameter is used (default is \code{"DEFLATE"}).
 In the cases GTiff or JPEG are chosen as output format for RGB products,
 this parameter can also be a 1-100 integer value, which is interpreted
 as the compression level for a JPEG compression.}
@@ -308,7 +367,7 @@ products are put directly within them.}
 added for each product created. Thumbnails are JPEG or PNG georeferenced
 small images (width or height of 1024 pixels) with default colour palettes
 (for more details, see the help window in the GUI). They are placed in
-a subdirectory of the products names "thumbnails".
+a subdirectory of the products names \code{"thumbnails"}.
 If FALSE, they are not created.}
 
 \item{parallel}{(optional) Logical or integer: setting to TRUE, the processing
@@ -324,7 +383,7 @@ order used to execute the processing chain (this affects the speed
 of computation and the usage of system resources).
 Values can be one of the followings:
 \itemize{
-\item "4" or "by_groups" (default):
+\item \code{"4"} or \code{"by_groups"} (default):
 it provides a good compromise between processing speed and disk usage.
 Processing is done as follows:
 \enumerate{
@@ -339,7 +398,7 @@ $g$ is the number of dates divided by the number of CPU;
 R sessions (one core for each date).
 }
 }
-\item "2" or "by_date":
+\item \code{"2"} or \code{"by_date"}:
 this allows minimising the requirements of disk usage
 (in particular if SAFE archives are deleted after processing).
 It is similar to the default execution, but each group is composed
@@ -347,7 +406,7 @@ by a single date: so the disk space occupied by SAFE archives
 and temporary files is lower,
 but it is generally slower than the default one because
 parallel computation over dates for products' generation is not possible.
-\item "3" or "mixed":
+\item \code{"3"} or \code{"mixed"}:
 this allows maximising CPU usage and processing speed.
 The cycle on groups is ignored, and all the required SAFE are
 first of all downloaded and/or produced, and then dates are
@@ -355,7 +414,7 @@ processed in parallel.
 This mode is faster than the default mode, but it requires
 all SAFE archives to be downloaded and processed before performing
 subsequent steps, thus increasing disk space requirements.
-\item "1" or "by_step":
+\item \code{"1"} or \code{"by_step"}:
 this is the legacy mode, in which the cycle on groups is ignored
 as well as the parallel computation over dates.
 All SAFE archives are first downloaded/processed,
@@ -364,12 +423,7 @@ This mode is similar to the previous one in terms of disk usage
 but it is slightly slower; its advantage are the lower RAM requirements.
 }}
 
-\item{use_python}{(optional) Logical: if TRUE (default), the presence of
-python in the system is checked before running the function;
-if FALSE, this is skipped. Setting this to FALSE can be useful on
-systems with problems with python, when \code{\link[=sen2r]{sen2r()}} is intended
-to be used only for processing existing SAFE files (python is required
-in any case to download SAFE).}
+\item{use_python}{Deprecated argument}
 
 \item{tmpdir}{(optional) Path where intermediate files will be created.
 Default is a temporary directory (unless \code{outformat = "VRT"}: in this case,
@@ -398,6 +452,8 @@ percentage of cloud covered pixels;
 function;
 \item \code{ltapath} with the path of a json file containing the list of the
 SAFE Sentinel-2 archives eventually ordered in Long Term Archive.
+\item \code{status} with a data.frame summarising the status of the processing (see
+\code{\link[=sen2r_process_report]{sen2r_process_report()}}).
 }
 }
 \description{
@@ -406,6 +462,9 @@ processing chain to find, download and pre-process Sentinel-2
 data. Input is a set of parameters that can be passed with a
 list or file (parameter \code{param_list}) or singularly (see the
 descriptions of all the other parameters).
+}
+\note{
+License: GPL 3.0
 }
 \examples{
 \donttest{
@@ -486,4 +545,9 @@ image(stars::read_stars(thumb_4[grep("RGB843B", thumb_4)]), rgb = 1:3)
 
 par(oldpar)
 }
+}
+\author{
+Luigi Ranghetti, phD (2020) \email{luigi@ranghetti.info}
+
+Lorenzo Busetto, phD (2020) \email{lbusett@gmail.com}
 }

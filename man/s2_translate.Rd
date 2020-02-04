@@ -4,10 +4,22 @@
 \alias{s2_translate}
 \title{Convert from SAFE format}
 \usage{
-s2_translate(infile, outdir = ".", subdirs = NA, tmpdir = NA,
-  rmtmp = TRUE, prod_type = NULL, tiles = NA, res = "10m",
-  format = "VRT", compress = "DEFLATE", vrt_rel_paths = NA,
-  utmzone = "", overwrite = FALSE)
+s2_translate(
+  infile,
+  outdir = ".",
+  subdirs = NA,
+  tmpdir = NA,
+  rmtmp = TRUE,
+  prod_type = NULL,
+  tiles = NA,
+  res = "10m",
+  format = "VRT",
+  compress = "DEFLATE",
+  bigtiff = FALSE,
+  vrt_rel_paths = NA,
+  utmzone = "",
+  overwrite = FALSE
+)
 }
 \arguments{
 \item{infile}{Full path of the input SAFE folder (alternatively,
@@ -53,13 +65,19 @@ format recognised by GDAL). Default value is "VRT" (Virtual Raster).}
 \item{compress}{(optional) In the case a GTiff format is
 chosen, the compression indicated with this parameter is used.}
 
+\item{bigtiff}{(optional) Logical: if TRUE, the creation of a BigTIFF is
+forced (default is FALSE).
+This option is used only in the case a GTiff format was chosen.}
+
 \item{vrt_rel_paths}{(optional) Logical: if TRUE (default on Linux),
 the paths present in the VRT output file are relative to the VRT position;
 if FALSE (default on Windows), they are absolute.
 This takes effect only with \code{format = "VRT"}.}
 
 \item{utmzone}{(optional) UTM zone of output products (default:
-the first one retrieved from input granules). Note that this function
+the first one retrieved from input granules),
+being a 3-length character (e.g. \code{"32N"}).
+Note that this function
 does not perform reprojections: if no granules refer to the specified
 UTM zone, no output is created.}
 

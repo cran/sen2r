@@ -11,7 +11,7 @@ Sentinel.2 archives.
 It is a named character in which names are SAFE codes
 (e.g. \code{S2A_MSIL2A_20170507T102031_N0205_R065_T32TNR_20170507T102319.SAFE}),
 and values are URLs used to retrieve them from ESA API Hub (e.g.
-\code{https://scihub.copernicus.eu/apihub/odata/v1/Products('a4a026c0-db7b-4ba8-9b09-53027ab0d7ab')/$value}).
+\verb{https://scihub.copernicus.eu/apihub/odata/v1/Products('a4a026c0-db7b-4ba8-9b09-53027ab0d7ab')/$value}).
 Some attributes may be included, basically information retrieved by
 function \link{s2_list} containing product metadata.
 Moreover, the attribute \code{online} (retrieved by function \link{safe_is_online}
@@ -42,11 +42,16 @@ attr(list_safe, "sensing_datetime") # extract an hidden attribute from a safelis
 ## Convert to other classes
 (s2_char <- as.character(list_safe)) # convert to a simple named character
 (s2_df <- as.data.frame(list_safe)) # convert to a data.frame
-library(data.table); (s2_dt <- as.data.table(list_safe)) # convert to a data.table
+library(data.table)
+(s2_dt <- as.data.table(list_safe)) # convert to a data.table
+library(sf)
+(s2_sf <- st_as_sf(list_safe)) # convert to sf
 
 ## Convert from other classes
 as(s2_char, "safelist") # this causes the loss of hidden attributes
-as(s2_df, "safelist") # this maintains attributes as columns
+as(s2_df, "safelist") # this (and followings) maintain attributes as columns
+as(s2_dt, "safelist")
+as(s2_sf, "safelist")
 }
 }
 \author{

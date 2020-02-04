@@ -66,7 +66,7 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
   if (any(
     is.null(binpaths$gdalinfo), !file.exists(nn(binpaths$gdalinfo)),
     force == TRUE,
-    !grepl(gdal_path, normalize_path(nn(binpaths$gdalinfo)))
+    !grepl(gdal_path, normalize_path(nn(binpaths$gdalinfo)), fixed = TRUE)
   )) {
     # nocov start
     print_message(
@@ -84,7 +84,13 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
     
     if (Sys.info()["sysname"] %in% c("Linux", "Darwin")) {
       paths_gdalinfo <- if (all(full_scan == FALSE, gdal_path == "")) {
-        Sys.which("gdalinfo")
+        list.files(
+          file.path(
+            system(paste0(Sys.which("gdal-config")," --prefix"), intern = TRUE),
+            "bin"
+          ),
+          "^gdalinfo$", recursive = TRUE, full.names = TRUE
+        )
       } else {
         list.files(
           if (gdal_path == "") {"/"} else {gdal_path},
@@ -109,9 +115,19 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
       print_message(
         type=message_type,
         "GDAL was not found",
+        if (Sys.info()["sysname"] == "Windows") {
+          paste0("within path \"",gdal_path,"\" ")
+        },
         if (gdal_path != "") {" within the defined GDAL path"},
         ", please install it",
-        if (gdal_path != "") {" or define another value for argument \"gdal_path\""},
+        if (gdal_path != "") {
+          " or define another value for argument \"gdal_path\""
+        } else {paste0(
+          " (see the documentation at ",
+          "https://sen2r.ranghetti.info/articles/installation ",
+          "to see how to install it) ",
+          " or define its location using argument \"gdal_path\""
+        )},
         "."
       )
       return(invisible(FALSE))
@@ -132,7 +148,13 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
     print_message(
       type=message_type,
       "GDAL version must be at least ", as.character(gdal_minversion),
-      ". Please update it."
+      ". Please update it, ",
+      if (gdal_path != "") {
+        " or define another value for argument \"gdal_path\"."
+      } else {paste0(
+        " or define a different GDAL environment which satisfies ",
+        "this requirement by setting the argument \"gdal_path\"."
+      )},
     )
     return(invisible(FALSE))
   }
@@ -225,16 +247,21 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
   if (!any(gdal_check_py)) {
     print_message(
       type=message_type,
-      "You do not have installed phe Python GDAL executables.",
+      "You do not have installed the Python GDAL executables",
       if (Sys.info()["sysname"] == "Windows") {paste0(
-        "\nUsing the OSGeo4W installer ",
+        ".\nUsing the OSGeo4W installer ",
         "(http://download.osgeo.org/osgeo4w/osgeo4w-setup-x86",
         if (Sys.info()["machine"]=="x86-64") {"_64"},".exe), ",
         "choose the \"Advanced install\" and ",
         "check the package \"gdal-python\"."
       )} else if (Sys.info()["sysname"] == "Darwin") {paste0(
-        "To do it, open a terminal and type ",
-        "\"brew install osgeo-gdal-python\"."
+        " (to do it, open a terminal and type ",
+        "\"brew install osgeo-gdal-python\")."
+      )} else if (Sys.info()["sysname"] == "Linux") {paste0(
+        " (see the documentation at ",
+        "https://sen2r.ranghetti.info/articles/installation#on-linux-systems ",
+        "to see how to install the required dependency ",
+        "based on your Linux distribution.",
       )}
     )
     return(invisible(FALSE))
@@ -275,6 +302,41 @@ check_gdal <- function(abort = TRUE, gdal_path = NULL, force = FALSE, full_scan 
     normalize_path(file.path(gdal_py_dir,"gdal_fillnodata.py"))
   }
   writeLines(jsonlite::toJSON(binpaths, pretty=TRUE), attr(binpaths, "path"))
+  
+  # set PATH
+  if (Sys.info()["sysname"] == "Windows") {
+    path_exi <- Sys.getenv("PATH")
+    if (!any(grepl(
+      normalize_path(gdal_dir), 
+      normalize_path(unlist(strsplit(path_exi, ";")), mustWork = FALSE), 
+      fixed=TRUE
+    ))) {
+      Sys.setenv(PATH = paste0(gdal_dir,";",Sys.getenv("PATH")))
+    }
+    if (!any(grepl(
+      normalize_path(gdal_py_dir), 
+      normalize_path(unlist(strsplit(path_exi, ";")), mustWork = FALSE), 
+      fixed=TRUE
+    ))) {
+      Sys.setenv(PATH = paste0(gdal_py_dir,";",Sys.getenv("PATH")))
+    }
+    # on.exit(Sys.setenv(PATH = path_exi))
+  }
+  
+  
+  # path for rgdal version 1.5.2 (missing proj.db)
+  # ("ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db")
+  if (all(
+    Sys.info()["sysname"] == "Windows",
+    length(list.files(Sys.getenv("PROJ_LIB"), "^proj\\.db$")) == 0
+  )) {
+    proj_dir_osgeo <- file.path(dirname(gdal_dir),"share/proj")
+    if (length(list.files(proj_dir_osgeo, "^proj\\.db$")) > 0) {
+      proj_lib_rgdal <- Sys.getenv("PROJ_LIB")
+      Sys.setenv(PROJ_LIB = proj_dir_osgeo)
+      # on.exit(Sys.setenv(PROJ_LIB = proj_lib_rgdal))
+    }
+  }
   
   print_message(
     type="message",

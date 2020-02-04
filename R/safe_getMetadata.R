@@ -28,12 +28,12 @@
 #'      - `"validname"` (TRUE or FALSE);
 #'      - `"exists"` (TRUE or FALSE);
 #'      - `"prod_type"` ('singlegranule' or 'product');
-#'      - `"version"` ('old' or 'compact');
+#'      - `"version"` (`'old'` or `'compact'`);
 #'      - `"tiles"` (vector with the tiles ID available in the product);
 #'      - `"utm"` (vector with the UTM zones used in the product);
 #'      - `"xml_main"` (name of the main XML file with metadata);
 #'      - `"xml_granules"` (names of the XML with granule metadata);
-#'      - `"level"` ('1C' or '2A');
+#'      - `"level"` (`'1C'` or `'2A'`);
 #'      - `"creation_datetime"`, `"id_tile"`, `"mission"`, `"centre"`,
 #'          `"file_class"`, `"id_orbit"`, `"orbit_number"`,
 #'          `"sensing_datetime"`, `"id_baseline"`: metadata specific of
@@ -86,7 +86,6 @@
 #' @note License: GPL 3.0
 #' @export
 #' @import data.table
-#' @importFrom reticulate py_to_r
 #' @importFrom methods is as
 #'
 #' @examples
@@ -203,8 +202,8 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
 # action="rm_invalid" causes the execution of rm_invalid_safe().
 .safe_getMetadata <- function(s2, info, format, simplify, abort, allow_oldnames, action) {
   
-  validname <- sensing_datetime <- creation_datetime <- utm <- NULL # to avoid NOTE on check
-
+  . <- validname <- sensing_datetime <- creation_datetime <- utm <- NULL # to avoid NOTE on check
+  
   # define regular expressions to identify products
   s2_regex <- list(
     "oldname_main_xml" = list("regex" = "^S(2[AB])\\_([A-Z]{4})\\_MTD\\_SAFL([12][AC])\\_(.{4})\\_([0-9]{8}T[0-9]{6})\\_R([0-9]{3})\\_V[0-9]{8}T[0-9]{6}\\_([0-9]{8}T[0-9]{6})\\.xml$",
@@ -241,7 +240,7 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
                  "id_orbit", "orbit_number", "sensing_datetime", "id_baseline") # information GENERALLY retrieved from name
   info_gdal <- c("clouds","direction","orbit_n","preview_url", # information retrieved by reading the file metadata
                  "proc_baseline","gdal_level","gdal_sensing_datetime",
-                 "nodata_value","saturated_value")
+                 "nodata_value","saturated_value","footprint")
   
   # check format attribute
   if (format == "default") {
@@ -426,11 +425,13 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
               s2_validname <- TRUE
               s2_version <- "old"
               s2_main_xml <- s2_xml <- oldname_main_xmlfile
-              s2_granules_xml <- unlist(sapply(
-                list.dirs(file.path(s2_path,"GRANULE"), recursive=FALSE, full.names=TRUE),
-                list.files, s2_regex$oldname_granule_xml$regex, full.names=TRUE
-              )) %>%
-                paste(collapse = ",")
+              s2_granules_xml <- paste(
+                unlist(sapply(
+                  list.dirs(file.path(s2_path,"GRANULE"), recursive=FALSE, full.names=TRUE),
+                  list.files, s2_regex$oldname_granule_xml$regex, full.names=TRUE
+                )), 
+                collapse = ","
+              )
             } else if (length(oldname_main_xmlfile)==0) {
               s2_validname <- FALSE # not recognised
               if (action == "getmetadata") {
@@ -455,11 +456,13 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
               s2_validname <- TRUE
               s2_version <- "compact"
               s2_main_xml <- s2_xml <- compactname_main_xmlfile
-              s2_granules_xml <- unlist(sapply(
-                list.dirs(file.path(s2_path,"GRANULE"), recursive=FALSE, full.names=TRUE),
-                list.files, s2_regex$compactname_granule_xml$regex, full.names=TRUE
-              )) %>%
-                paste(collapse = ",")
+              s2_granules_xml <- paste(
+                unlist(sapply(
+                  list.dirs(file.path(s2_path,"GRANULE"), recursive=FALSE, full.names=TRUE),
+                  list.files, s2_regex$compactname_granule_xml$regex, full.names=TRUE
+                )),
+                collapse = ","
+              )
             } else {
               s2_validname <- FALSE # not univocally recognised
               if (action == "getmetadata") {
@@ -573,6 +576,22 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
         }
       }
       
+      # check jp2 files exist
+      jp2_listall <- list.files(s2_path, "\\.jp2$", recursive=TRUE, full.names=FALSE)
+      if (length(jp2_listall) == 0) {
+        s2_validname <- FALSE # missing data
+        if (action == "getmetadata") {
+          print_message(
+            type=message_type,
+            "This product (",s2_name,") does not contain raster data, ",
+            "and should be deleted from directory \"",dirname(s2_path),"\"; ",
+            "otherwise, errors can occur during data processing."
+          )
+        } else if (action == "rm_invalid" & s2_exists) {
+          unlink(s2_path, recursive=TRUE)
+        }
+      }
+      
     }
     
     ## Populate metadata list
@@ -635,7 +654,10 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
           metadata[[i]][["tiles"]] <- paste(av_tiles, collapse = ",")
         }
         if ("utm" %in% sel_info) {
-          metadata[[i]][["utm"]] <- as.integer(unique(substr(av_tiles,1,2)))
+          metadata[[i]][["utm"]] <- unique(paste0(
+            substr(av_tiles,1,2),
+            ifelse(substr(av_tiles,3,3) %in% LETTERS[1:13], "S", "N")
+          ))
         }
       }
       
@@ -680,82 +702,87 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
       
       # if necessary, read the file for further metadata[[i]]
       if (any(info_gdal %in% sel_info) & s2_exists) {
-        
-        # import python modules
-        py <- init_python()
-        
-        s2_gdal <- suppressWarnings(py$gdal$Open(s2_xml))
-        
-        # workaround for L2A generated by Sen2Cor 2.8.0
-        if (is.null(py_to_r(s2_gdal))) {
-          s2_xml_new <- tempfile()
-          s2_xml_content <- readLines(s2_xml)
-          lines_tofix <- c(
-            grep("</?Product_Info>", s2_xml_content),
-            grep("</?Product_Organisation>", s2_xml_content)
-          )
-          s2_xml_content[lines_tofix] <- gsub(
-            "Product_", "L2A_Product_",
-            s2_xml_content[lines_tofix]
-          )
-          writeLines(s2_xml_content, s2_xml_new)
-          s2_gdal <- py$gdal$Open(s2_xml_new)
-        }
-        
-        # in case of error (old names), try to read a single granule
-        if (s2_type=="product" & is(s2_gdal,"python.builtin.NoneType")) {
-          first_granule <- list.files(file.path(s2_path,"GRANULE"),full.names=TRUE)[1]
-          first_granule_xml <- list.files(first_granule,s2_regex[[paste0(s2_version,"name_granule_xml")]]$regex,full.names=TRUE)
-          s2_gdal <- py$gdal$Open(first_granule_xml)
-        }
-        
-      }
-      
-      # # If s2 is a gdal object, read metadata[[i]] directly
-      # if (is(s2, "osgeo.gdal.Dataset")) {
-      #   s2_gdal <- s2[i]
-      # }
-      
-      # retrieve metadata[[i]] from file content
-      if (exists("s2_gdal") & s2_exists) {
-        
+        s2_gdal <- readLines(s2_xml)
         # Read metadata[[i]]
         if ("clouds" %in% sel_info) {
-          metadata[[i]][["clouds"]] <- py_to_r(s2_gdal$GetMetadata()[["CLOUD_COVERAGE_ASSESSMENT"]])
+          meta_reg <- "Cloud\\_Coverage\\_Assessment"
+          metadata[[i]][["clouds"]] <- gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          )
         }
         if ("direction" %in% sel_info) {
-          metadata[[i]][["direction"]] <- py_to_r(s2_gdal$GetMetadata()[["DATATAKE_1_SENSING_ORBIT_DIRECTION"]])
+          meta_reg <- "SENSING\\_ORBIT\\_DIRECTION"
+          metadata[[i]][["direction"]] <- gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          )
         }
         if ("orbit_n" %in% sel_info) {
-          metadata[[i]][["orbit_n"]] <- py_to_r(s2_gdal$GetMetadata()[["DATATAKE_1_SENSING_ORBIT_NUMBER"]])
+          meta_reg <- "SENSING\\_ORBIT\\_NUMBER"
+          metadata[[i]][["orbit_n"]] <- gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1",
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          )
         }
         if ("preview_url" %in% sel_info) {
-          metadata[[i]][["preview_url"]] <- py_to_r(s2_gdal$GetMetadata()[["PREVIEW_IMAGE_URL"]])
+          meta_reg <- "PREVIEW\\_IMAGE\\_URL"
+          metadata[[i]][["preview_url"]] <- gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          )
         }
         if ("proc_baseline" %in% sel_info) {
-          metadata[[i]][["proc_baseline"]] <- py_to_r(s2_gdal$GetMetadata()[["PROCESSING_BASELINE"]])
+          meta_reg <- "PROCESSING\\_BASELINE"
+          metadata[[i]][["preview_url"]] <- gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1",
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          )
         }
         # if ("level" %in% sel_info) {
-        #   metadata[[i]][["level"]] <- py_to_r(s2_gdal$GetMetadata()[["PROCESSING_LEVEL"]])
+        #   meta_reg <- "PROCESSING_LEVEL"
+        #   metadata[[i]][["level"]] <- gsub(
+        #     paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+        #     s2_gdal[grepl(meta_reg, s2_gdal)]
+        #   )
         # }
         if ("sensing_datetime" %in% sel_info) {
-          start_time <- as.POSIXct(
-            py_to_r(s2_gdal$GetMetadata()[["PRODUCT_START_TIME"]]), format="%Y-%m-%dT%H:%M:%S", tz="UTC")
-          stop_time <- as.POSIXct(
-            py_to_r(s2_gdal$GetMetadata()[["PRODUCT_STOP_TIME"]]), format="%Y-%m-%dT%H:%M:%S", tz="UTC")
-          metadata[[i]][["sensing_datetime"]] <- if (start_time == stop_time) {
-            start_time
-          } else {
-            c(start_time, stop_time)
-          }
+          meta_reg <- "PRODUCT\\_ST[AO][RP]T?\\_TIME"
+          metadata[[i]][["sensing_datetime"]] <- as.POSIXct(
+            unique(gsub(
+              paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+              s2_gdal[grepl(meta_reg, s2_gdal)]
+            )),
+            tz = "UTC", format = "%Y-%m-%dT%H:%M:%S"
+          )
         }
         if ("nodata_value" %in% sel_info) {
-          metadata[[i]][["nodata_value"]] <- py_to_r(s2_gdal$GetMetadata()[["SPECIAL_VALUE_NODATA"]])
+          metadata[[i]][["nodata_value"]] <- gsub(
+            "^ *<SPECIAL\\_VALUE\\_INDEX>([^<]+)<\\/SPECIAL\\_VALUE\\_INDEX> *$", "\\1", 
+            s2_gdal[grep("<SPECIAL\\_VALUE\\_TEXT>NODATA<\\/SPECIAL\\_VALUE\\_TEXT>", s2_gdal)+1]
+          )
         }
         if ("saturated_value" %in% sel_info) {
-          metadata[[i]][["saturated_value"]] <- py_to_r(s2_gdal$GetMetadata()[["SPECIAL_VALUE_SATURATED"]])
+          metadata[[i]][["saturated_value"]] <- gsub(
+            "^ *<SPECIAL\\_VALUE\\_INDEX>([^<]+)<\\/SPECIAL\\_VALUE\\_INDEX> *$", "\\1",
+            s2_gdal[grep("<SPECIAL\\_VALUE\\_TEXT>SATURATED<\\/SPECIAL\\_VALUE\\_TEXT>", s2_gdal)+1]
+          )
         }
-        
+        if ("footprint" %in% sel_info) {
+          meta_reg <- "EXT\\_POS\\_LIST"
+          sel_footprint_raw0 <- unlist(strsplit(gsub(
+            paste0("^ *<",meta_reg,">([^<]+)</",meta_reg,"> *$"), "\\1", 
+            s2_gdal[grepl(meta_reg, s2_gdal)]
+          ), " "))
+          sel_footprint_raw1 <- apply(
+            matrix(sel_footprint_raw0, ncol = 2, byrow = TRUE)[,2:1],
+            1, paste, collapse = " "
+          )
+          metadata[[i]][["footprint"]] <- paste(
+            paste0("POLYGON((",sel_footprint_raw1,"))"),  
+            collapse = ", "
+          )
+        }
       }
       
     } # end of s2_exists IF cycle
@@ -792,9 +819,9 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
     sapply(metadata, function(m) {all(!m[["exists"]], m[["validname"]])})
   } else if (action == "isvalid") {
     if ("exists" %in% info) {
-      sapply(metadata, function(m) {all(m[["exists"]], m[["validname"]])})
+      nn(unlist(sapply(metadata, function(m) {all(m[["exists"]], m[["validname"]])})))
     } else {
-      sapply(metadata, function(m) {m[["validname"]]})
+      nn(unlist(sapply(metadata, function(m) {m[["validname"]]})))
     }
   } else if (format == "list" ) {
     for (i in seq_along(metadata)) {
@@ -811,10 +838,12 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
       metadata
     }
   } else if (format %in% c("data.table", "data.frame", "vector")) {
-    metadata_dt <- lapply(metadata, function(m) {
-      unlist(m) %>% t() %>% as.data.frame(stringsAsFactors=FALSE)
-    }) %>%
-      rbindlist(fill=TRUE)
+    metadata_dt <- rbindlist(
+      lapply(metadata, function(m) {
+        as.data.frame(t(unlist(m)), stringsAsFactors=FALSE)
+      }), 
+      fill = TRUE
+    )
     if (!is.null(metadata_dt$validname)) {
       metadata_dt$validname <- as.logical(metadata_dt$validname)
     }
@@ -830,9 +859,6 @@ safe_isvalid <- function(s2, allow_oldnames = FALSE, check_file = TRUE) {
       metadata_dt$creation_datetime <- format(
         as.POSIXct(metadata_dt$creation_datetime, format = "%s"), tz = "UTC", usetz = TRUE
       )
-    }
-    if (!is.null(metadata_dt$utm)) {
-      metadata_dt$utm <- as.integer(metadata_dt$utm)
     }
     if (format == "data.frame") {
       data.frame(metadata_dt)

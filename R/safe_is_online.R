@@ -8,12 +8,15 @@
 #' @param apihub Path of the "apihub.txt" file containing credentials
 #'  of SciHub account.
 #'  If NA (default), the default location inside the package will be used.
+#' @param verbose Logical: if TRUE, provide processing messages summarising
+#'  how many of the SAFE archives in `s2_prodlist` are available online.
 #' @return A logical vector of the same length and names of the SAFE products
 #'  passed with `s2_prodlist`,
 #'  in which each element is TRUE if the corresponding SAFE archive is 
 #'  available for download, FALSE if it is not or NA in case of errors with
 #'  the SAFE url.
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
+#' @author Lorenzo Busetto, phD (2020) \email{lbusett@@gmail.com}
 #' @note License: GPL 3.0
 #' @importFrom httr GET authenticate content
 #' @importFrom jsonlite fromJSON
@@ -32,7 +35,7 @@
 #' safe_is_online(list_safe)
 #' }
 
-safe_is_online <- function(s2_prodlist = NULL, apihub = NA) {
+safe_is_online <- function(s2_prodlist = NULL, apihub = NA, verbose = TRUE) {
   
   # convert input NA arguments in NULL
   for (a in c("s2_prodlist", "apihub")) {
@@ -57,17 +60,40 @@ safe_is_online <- function(s2_prodlist = NULL, apihub = NA) {
   creds <- read_scihub_login(apihub)
   
   # check for availability
-  s2_availability <- as.logical(sapply(s2_prodlist, function(p) {
+  s2_availability <- sapply(s2_prodlist, function(p) {
     tryCatch(
-      httr::content(httr::GET(
+      as.logical(httr::content(httr::GET(
         url = gsub("\\$value$", "Online/$value", p),
         config = httr::authenticate(creds[1], creds[2])
-      ), as = "parsed", encoding = "UTF-8"), 
-      error = function(e) {NA}
+      ), as = "parsed", encoding = "UTF-8")), 
+      error = function(e) {
+        print_message(
+          type = "warning",
+          "Some error occurred (the Copernicus API Hub may be down)."
+        )
+        NA
+      }
     )
-  }))
-  names(s2_availability) <- names(s2_prodlist)
-  s2_availability
-
-}
+  })
   
+  names(s2_availability) <- names(s2_prodlist)
+  
+  if (verbose == TRUE) {
+    if (all(s2_availability)) {
+      print_message(
+        type = "message",
+        date = FALSE,
+        "All ", length(s2_availability), " products are online."
+      )
+    } else {
+      print_message(
+        type = "message",
+        date = FALSE,
+        length(which(s2_availability)), " out of ",  
+        length(s2_availability), " products are online."
+      )
+    }
+  }
+  s2_availability
+  
+}

@@ -4,10 +4,23 @@
 \alias{s2_rgb}
 \title{Create RGB images from S2 reflectance products.}
 \usage{
-s2_rgb(infiles, prod_type = NA, rgb_bands = 4:2, scaleRange = NA,
-  outdir = NA, subdirs = NA, format = NA, compress = "DEFLATE",
-  tmpdir = NA, rmtmp = TRUE, parallel = TRUE, overwrite = FALSE,
-  .log_message = NA, .log_output = NA)
+s2_rgb(
+  infiles,
+  prod_type = NA,
+  rgb_bands = 4:2,
+  scaleRange = NA,
+  outdir = NA,
+  subdirs = NA,
+  format = NA,
+  compress = "DEFLATE",
+  bigtiff = FALSE,
+  tmpdir = NA,
+  rmtmp = TRUE,
+  parallel = TRUE,
+  overwrite = FALSE,
+  .log_message = NA,
+  .log_output = NA
+)
 }
 \arguments{
 \item{infiles}{A vector of input filenames. Input files are paths
@@ -49,6 +62,10 @@ format recognised by GDAL). Default is the same format of input images
 
 \item{compress}{(optional) In the case a GTiff format is
 present, the compression indicated with this parameter is used.}
+
+\item{bigtiff}{(optional) Logical: if TRUE, the creation of a BigTIFF is
+forced (default is FALSE).
+This option is used only in the case a GTiff format was chosen.}
 
 \item{tmpdir}{(optional) Path where intermediate files (VRT) will be created.
 Default is a temporary directory.

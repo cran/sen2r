@@ -36,12 +36,17 @@
 #'  format recognised by GDAL). Default value is "VRT" (Virtual Raster).
 #' @param compress (optional) In the case a GTiff format is
 #'  chosen, the compression indicated with this parameter is used.
+#' @param bigtiff (optional) Logical: if TRUE, the creation of a BigTIFF is
+#'  forced (default is FALSE).
+#'  This option is used only in the case a GTiff format was chosen. 
 #' @param vrt_rel_paths (optional) Logical: if TRUE (default on Linux),
 #'  the paths present in the VRT output file are relative to the VRT position;
 #'  if FALSE (default on Windows), they are absolute.
 #'  This takes effect only with `format = "VRT"`.
 #' @param utmzone (optional) UTM zone of output products (default:
-#'  the first one retrieved from input granules). Note that this function
+#'  the first one retrieved from input granules),
+#'  being a 3-length character (e.g. `"32N"`).
+#'  Note that this function
 #'  does not perform reprojections: if no granules refer to the specified
 #'  UTM zone, no output is created.
 #' @param overwrite Logical value: should existing output files be
@@ -83,6 +88,7 @@ s2_translate <- function(infile,
                          res="10m",
                          format="VRT",
                          compress="DEFLATE",
+                         bigtiff=FALSE,
                          vrt_rel_paths=NA,
                          utmzone="",
                          overwrite = FALSE) {
@@ -123,9 +129,9 @@ s2_translate <- function(infile,
       "Format \"",format,"\" is not recognised; ",
       "please use one of the formats supported by your GDAL installation.\n\n",
       "To list them, use the following command:\n",
-      "gdalUtils::gdalinfo(formats=TRUE)\n\n",
+      "\u00A0\u00A0gdalUtils::gdalinfo(formats=TRUE)\n\n",
       "To search for a specific format, use:\n",
-      "gdalinfo(formats=TRUE)[grep(\"yourformat\", gdalinfo(formats=TRUE))]")
+      "\u00A0\u00A0gdalinfo(formats=TRUE)[grep(\"yourformat\", gdalinfo(formats=TRUE))]")
   }
   
   # Check GDAL installation
@@ -138,9 +144,17 @@ s2_translate <- function(infile,
   )
   infile_dir = dirname(infile_meta$xml_main)
   
-  # define output directory
+  # create outdir if not existing (and dirname(outdir) exists)
   suppressWarnings(outdir <- expand_path(outdir, parent=dirname(infile_dir), silent=TRUE))
+  if (!dir.exists(dirname(outdir))) {
+    print_message(
+      type = "error",
+      "The parent folder of 'outdir' (",outdir,") does not exist; ",
+      "please create it."
+    )
+  }
   dir.create(outdir, recursive=FALSE, showWarnings=FALSE)
+  
   # create subdirs
   if (is.na(subdirs)) {
     subdirs <- ifelse(length(prod_type)>1, TRUE, FALSE)
@@ -168,7 +182,7 @@ s2_translate <- function(infile,
       type="message",
       "Using UTM zone ",sel_utmzone <- infile_meta$utm[1],".")
   } else {
-    sel_utmzone <- which(infile_meta$utm== as.integer(utmzone))
+    sel_utmzone <- which(infile_meta$utm == utmzone)
     if (length(sel_utmzone)==0) {
       print_message(
         type="warning",
@@ -273,6 +287,7 @@ s2_translate <- function(infile,
               paste0(
                 binpaths$gdalbuildvrt," -separate ",
                 "-resolution highest ",
+                "-a_srs \"EPSG:",st_crs2(sel_utmzone)$epsg,"\" ",
                 "\"",final_vrt_name,"\" ",
                 paste(paste0("\"",jp2_selbands,"\""), collapse=" ")
               ),
@@ -291,6 +306,7 @@ s2_translate <- function(infile,
               paste0(
                 binpaths$gdal_translate," -of ",format," ",
                 if (format=="GTiff") {paste0("-co COMPRESS=",toupper(compress)," ")},
+                if (format=="GTiff" & bigtiff==TRUE) {paste0("-co BIGTIFF=YES ")},
                 if (!is.na(sel_na)) {paste0("-a_nodata ",sel_na," ")},
                 "\"",final_vrt_name,"\" ",
                 "\"",out_name,"\""
@@ -301,7 +317,7 @@ s2_translate <- function(infile,
             }
           }
           
-          # fix for envi extension (writeRaster use .envi)
+          # fix for envi extension (writeRaster uses .envi)
           if (format=="ENVI") {fix_envi_format(out_name)}
           
         } # end of "overwite" IF cycle

@@ -17,28 +17,28 @@
 #'  ([safe_shortname]).
 #' @param mask_type (optional) Character vector which determines the type of
 #'  mask to be applied. Accepted values are:
-#'  - "nomask": do not mask any pixel;
-#'  - "nodata": mask pixels checked as "No data" or "Saturated or defective"
+#'  - `"nomask"`: do not mask any pixel;
+#'  - `"nodata"`: mask pixels checked as "No data" or "Saturated or defective"
 #'      in the SCL product (all pixels with values are maintained);
-#'  - "cloud_high_proba": mask pixels checked as "No data", "Saturated or
+#'  - `"cloud_high_proba"`: mask pixels checked as "No data", "Saturated or
 #'      defective" or "Cloud (high probability)" in the SCL product;
-#'  - "cloud_medium_proba": mask pixels checked as "No data", "Saturated or
+#'  - `"cloud_medium_proba": mask pixels checked as "No data", "Saturated or
 #'      defective" or "Cloud (high or medium probability)" in the SCL product;
-#'  - "cloud_and_shadow": mask pixels checked as "No data", "Saturated or
+#'  - `"cloud_and_shadow"`: mask pixels checked as "No data", "Saturated or
 #'      defective", "Cloud (high or medium probability)" or "Cloud shadow"
 #'      in the SCL product;
-#'  - "clear_sky": mask pixels checked as "No data", "Saturated or
+#'  - `"clear_sky"`: mask pixels checked as "No data", "Saturated or
 #'      defective", "Cloud (high or medium probability)", "Cloud shadow",
 #'      "Unclassified" or "Thin cirrus" in the SCL product
 #'      (only pixels classified as clear-sky surface - so "Dark area",
 #'      "Vegetation", "Bare soil", "Water" or "Snow" - are maintained);
-#'  - "land": mask pixels checked as "No data", "Saturated or
+#'  - `"land"`: mask pixels checked as "No data", "Saturated or
 #'      defective", "Cloud (high or medium probability)", "Cloud shadow", "Dark area",
 #'      "Unclassified", "Thin cirrus", "Water" or "Snow" in the SCL product
 #'      (only pixels classified as land surface - so "Vegetation" or
 #'      "Bare soil" - are maintained);
-#'  - a string in the following form: "scl_n_m_n", where n, m and n are one or
-#'      more SCL class numbers. E.g. string "scl_0_8_9_11" can
+#'  - a string in the following form: `"scl_n_m_n"`, where `n`, `m` and `n` 
+#'      are one or more SCL class numbers. E.g. string `"scl_0_8_9_11"` can
 #'      be used to mask classes 0 ("No data"), 8-9 ("Cloud (high or medium
 #'      probability)") and 11 ("Snow").
 #' @param smooth (optional) Numerical (positive): the size (in the unit of
@@ -54,13 +54,13 @@
 #'  type of mask chosen with argument `mask_type`) for producing outputs.
 #'  Images with a percentage of masked surface greater than `max_mask`%
 #'  are not processed (the list of expected output files which have not been
-#'  generated is returned as an attribute, named "skipped").
+#'  generated is returned as an attribute, named `skipped`).
 #'  Default value is 80.
 #'  Notice that the percentage is computed on non-NA values (if input images
 #'  had previously been clipped and masked using a polygon, the percentage is
 #'  computed on the surface included in the masking polygons).
 #' @param outdir (optional) Full name of the output directory where
-#'  the files should be created (default: "current directory"masked"
+#'  the files should be created (default: `"masked"`
 #'  subdir of current directory).
 #'  `outdir` can bot be an existing or non-existing directory (in the
 #'  second case, its parent directory must exists).
@@ -79,20 +79,23 @@
 #'  pixel values can be 1 (no cloud mask), 0 (cloud mask) or NA (original NA
 #'  value, i.e. because input rasters had been clipped on the extent polygons).
 #'  If FALSE (default) they are not exported; if TRUE, they are exported
-#'  as MSK prod type (so saved within `outdir`, in a subdirectory called "MSK"
+#'  as `MSK` prod type (so saved within `outdir`, in a subdirectory called `"MSK"`
 #'  if `subdirs = TRUE`).
-#'  Notice that the presence of "MSK" products is not checked before running
+#'  Notice that the presence of `"MSK"` products is not checked before running
 #'  `sen2r()`, as done for the other products; this means that missing products
 #'  which are not required to apply cloud masks will not be produced.
 #' @param format (optional) Format of the output file (in a
 #'  format recognised by GDAL). Default is the same format of input images
-#'  (or "GTiff" in case of VRT input images).
+#'  (or `"GTiff"` in case of VRT input images).
 #' @param subdirs (optional) Logical: if TRUE, different indices are
 #'  placed in separated `outfile` subdirectories; if FALSE, they are placed in
 #'  `outfile` directory; if NA (default), subdirectories are created only if
 #'  more than a single product is required.
-#' @param compress (optional) In the case a GTiff format is
+#' @param compress (optional) In the case a `GTiff` format is
 #'  present, the compression indicated with this parameter is used.
+#' @param bigtiff (optional) Logical: if TRUE, the creation of a BigTIFF is
+#'  forced (default is FALSE).
+#'  This option is used only in the case a GTiff format was chosen. 
 #' @param parallel (optional) Logical: if TRUE, masking is conducted using parallel
 #'  processing, to speed-up the computation for large rasters.
 #'  The number of cores is automatically determined; specifying it is also
@@ -108,7 +111,7 @@
 #' @param .log_output (optional) Internal parameter
 #'  (it is used when the function is called by `sen2r()`).
 #' @return [s2_mask] returns a vector with the names of the created products.
-#'  An attribute "toomasked" contains the paths of the outputs which were not
+#'  An attribute `"toomasked"` contains the paths of the outputs which were not
 #'  created cause to the high percentage of cloud coverage.
 #' @export
 #' @importFrom raster brick calc dataType mask overlay stack values
@@ -158,6 +161,7 @@ s2_mask <- function(infiles,
                     format = NA,
                     subdirs = NA,
                     compress = "DEFLATE",
+                    bigtiff = FALSE,
                     parallel = FALSE,
                     overwrite = FALSE,
                     .log_message = NA,
@@ -175,6 +179,7 @@ s2_mask <- function(infiles,
            format = format,
            subdirs = subdirs,
            compress = compress,
+           bigtiff = bigtiff,
            parallel = parallel,
            overwrite = overwrite,
            output_type = "s2_mask",
@@ -195,6 +200,7 @@ s2_mask <- function(infiles,
                      format = NA,
                      subdirs = NA,
                      compress = "DEFLATE",
+                     bigtiff = FALSE,
                      parallel = FALSE,
                      overwrite = FALSE,
                      output_type = "s2_mask", # determines if using s2_mask() or s2_perc_masked()
@@ -228,9 +234,9 @@ s2_mask <- function(infiles,
         "Format \"",format,"\" is not recognised; ",
         "please use one of the formats supported by your GDAL installation.\n\n",
         "To list them, use the following command:\n",
-        "gdalUtils::gdalinfo(formats=TRUE)\n\n",
+        "\u00A0\u00A0gdalUtils::gdalinfo(formats=TRUE)\n\n",
         "To search for a specific format, use:\n",
-        "gdalinfo(formats=TRUE)[grep(\"yourformat\", gdalinfo(formats=TRUE))]")
+        "\u00A0\u00A0gdalinfo(formats=TRUE)[grep(\"yourformat\", gdalinfo(formats=TRUE))]")
     }
   }
   
@@ -267,14 +273,17 @@ s2_mask <- function(infiles,
   infiles_meta_raster <- raster_metadata(infiles, c("res", "outformat", "unit"), format="data.table")
   maskfiles_meta_sen2r <- sen2r_getElements(maskfiles, format="data.table")
   
-  # create outdir if not existing
+  # create outdir if not existing (and dirname(outdir) exists)
+  suppressWarnings(outdir <- expand_path(outdir, parent=comsub(infiles,"/"), silent=TRUE))
   if (!dir.exists(dirname(outdir))) {
     print_message(
       type = "error",
-      "Directory '",dirname(outdir),"' does not exists."
+      "The parent folder of 'outdir' (",outdir,") does not exist; ",
+      "please create it."
     )
   }
   dir.create(outdir, recursive=FALSE, showWarnings=FALSE)
+  
   # create subdirs (if requested)
   prod_types <- unique(infiles_meta_sen2r$prod_type)
   if (is.na(subdirs)) {
@@ -361,6 +370,7 @@ s2_mask <- function(infiles,
           paste0(
             binpaths$gdal_translate," -of ",sel_format," ",
             if (sel_format=="GTiff") {paste0("-co COMPRESS=",toupper(compress)," ")},
+            if (sel_format=="GTiff" & bigtiff==TRUE) {paste0("-co BIGTIFF=YES ")},
             "\"",sel_infile,"\" ",
             "\"",sel_outfile,"\""
           ), intern = Sys.info()["sysname"] == "Windows"
@@ -377,6 +387,7 @@ s2_mask <- function(infiles,
             paste0(
               binpaths$gdal_translate," -of GTiff ",
               paste0("-co COMPRESS=",toupper(compress)," "),
+              if (bigtiff==TRUE) {"-co BIGTIFF=YES "},
               "\"",sel_infile,"\" ",
               "\"",gsub("\\.vrt$",".tif",sel_infile),"\""
             ), intern = TRUE
@@ -400,21 +411,34 @@ s2_mask <- function(infiles,
             mask_tmpfiles,
             file.path(sel_tmpdir, basename(tempfile(pattern = "mask_", fileext = ".tif")))
           )
-          raster::calc(inmask[[j]],
-                       function(x){as.integer(!is.na(nn(x)) & !x %in% req_masks[[j]])},
-                       filename = mask_tmpfiles[j],
-                       options = "COMPRESS=LZW",
-                       datatype = "INT1U",
-                       overwrite = TRUE)
+          suppress_warnings(
+            raster::calc(
+              inmask[[j]],
+              function(x){as.integer(!is.na(nn(x)) & !x %in% req_masks[[j]])},
+              filename = mask_tmpfiles[j],
+              options = c(
+                "COMPRESS=LZW",
+                if (bigtiff==TRUE) {"BIGTIFF=YES"}
+              ),
+              datatype = "INT1U",
+              overwrite = TRUE
+            ),
+            "NOT UPDATED FOR PROJ >\\= 6"
+          )
           naval_tmpfiles <- c(
             naval_tmpfiles,
             file.path(sel_tmpdir, basename(tempfile(pattern = "naval_", fileext = ".tif")))
           )
-          raster::calc(inmask[[j]],
-                       function(x){as.integer(!is.na(nn(x)))},
-                       filename = naval_tmpfiles[j],
-                       options = "COMPRESS=LZW",
-                       datatype = "INT1U")
+          suppress_warnings(
+            raster::calc(
+              inmask[[j]],
+              function(x){as.integer(!is.na(nn(x)))},
+              filename = naval_tmpfiles[j],
+              options = "COMPRESS=LZW",
+              datatype = "INT1U"
+            ),
+            "NOT UPDATED FOR PROJ >\\= 6"
+          )
         }
         if(length(mask_tmpfiles)==1) {
           outmask <- mask_tmpfiles
@@ -496,7 +520,8 @@ s2_mask <- function(infiles,
                 outmask_res,
                 radius = smooth, buffer = buffer,
                 namask = if (min_values_naval==0) {outnaval_res} else {NULL}, # TODO NULL if no Nodata values are present
-                binpaths = binpaths, tmpdir = sel_tmpdir
+                binpaths = binpaths, tmpdir = sel_tmpdir,
+                bigtiff = bigtiff
               )
             } else {
               outmask_res
@@ -519,18 +544,21 @@ s2_mask <- function(infiles,
               }
               if (any(!file.exists(binmask), overwrite == TRUE)) {
                 # mask NA values
-                raster::mask(
-                  raster(outmask_smooth),
-                  raster(outnaval_res),
-                  filename = binmask,
-                  maskvalue = 0,
-                  updatevalue = sel_naflag,
-                  updateNA = TRUE,
-                  NAflag = 255,
-                  datatype = "INT1U",
-                  format = sel_format,
-                  options = if(sel_format == "GTiff") {paste0("COMPRESS=",compress)},
-                  overwrite = overwrite
+                suppress_warnings(
+                  raster::mask(
+                    raster(outmask_smooth),
+                    raster(outnaval_res),
+                    filename = binmask,
+                    maskvalue = 0,
+                    updatevalue = sel_naflag,
+                    updateNA = TRUE,
+                    NAflag = 255,
+                    datatype = "INT1U",
+                    format = sel_format,
+                    options = if(sel_format == "GTiff") {paste0("COMPRESS=",compress)},
+                    overwrite = overwrite
+                  ),
+                  "NOT UPDATED FOR PROJ >\\= 6"
                 )
               }
             }
@@ -552,14 +580,22 @@ s2_mask <- function(infiles,
               if (grepl("\\.vrt$", out_file)) {
                 out_file <- gsub("\\.vrt$", ".tif", out_file)
               }
-              out <- writeStart(
-                out,
-                out_file,
-                NAflag=na,
-                datatype = datatype,
-                format = ifelse(sel_format=="VRT","GTiff",sel_format),
-                if(sel_format %in% c("GTiff","VRT")){options = c("COMPRESS=LZW")},
-                overwrite = overwrite
+              suppress_warnings(
+                out <- writeStart(
+                  out,
+                  out_file,
+                  NAflag=na,
+                  datatype = datatype,
+                  format = ifelse(sel_format=="VRT","GTiff",sel_format),
+                  if (sel_format %in% c("GTiff","VRT")) {
+                    options = c(
+                      "COMPRESS=LZW",
+                      if (bigtiff==TRUE) {"BIGTIFF=YES"}
+                    )
+                  },
+                  overwrite = overwrite
+                ),
+                "NOT UPDATED FOR PROJ >\\= 6"
               )
               #4 bytes per cell, nb + 1 bands (brick + mask), * 2 to account for a copy
               bs <- blockSize(out, minblocks = 8)

@@ -27,14 +27,14 @@
 #'  level of the tiles to be listed (default: no filter).
 #' @param availability Character argument, determining which products have
 #'  to be returned: 
-#'  - "online" : only archive names already available for download are returned;
-#'  - "lta": only archive names stored in the Long Term Archive
-#'      (see https://scihub.copernicus.eu/userguide/LongTermArchive)
+#'  - `"online"` : only archive names already available for download are returned;
+#'  - `"lta"`: only archive names stored in the
+#'      [Long Term Archive](https://scihub.copernicus.eu/userguide/LongTermArchive)
 #'      are returned;
-#'  - "check": all archive names are returned, checking if they are
+#'  - `"check"`: all archive names are returned, checking if they are
 #'      available or not for download (see "Value" to know 
 #'      how to distinguish each other);
-#'  - "ignore" (default): all archive names are returned, without doing the check
+#'  - `"ignore"` (default): all archive names are returned, without doing the check
 #'      (running the function is faster).
 #' @param output_type Deprecated (use `as.data.table` to obtain a data.table).
 #' @return An object of class [safelist].
@@ -43,13 +43,13 @@
 #'  products available for download / stored in the Long Term Archive; 
 #'  otherwise, values are set to NA.
 #' @author Lorenzo Busetto, phD (2019) \email{lbusett@@gmail.com} - Inspired by 
-#'  function `getSentinel_query` of package `getSpatialData` by J. Schwalb-Willmann
-#'  (https://github.com/16EAGLE/getSpatialData)
+#'  function `getSentinel_query` of package 
+#'  [`getSpatialData`](https://github.com/16EAGLE/getSpatialData) by J. Schwalb-Willmann
+#'  
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
 #' @note License: GPL 3.0
 #' @import data.table
 #' @importFrom methods is
-#' @importFrom magrittr "%>%"
 #' @importFrom sf st_as_sfc st_sfc st_point st_as_text st_bbox st_coordinates
 #'  st_geometry st_intersection st_geometry st_convex_hull st_transform st_cast
 #'  st_union st_simplify
@@ -160,8 +160,10 @@ s2_list <- function(spatial_extent = NULL,
         "`spatial_extent` is not a `sf` or `sfc` object."
       )
     } else {
-      spatial_extent <- sf::st_geometry(spatial_extent) %>%
-        sf::st_transform(4326)
+      spatial_extent <- st_transform(
+        st_geometry(spatial_extent),
+        4326
+      )
     }
   }
   
@@ -308,59 +310,95 @@ s2_list <- function(spatial_extent = NULL,
       
       out_query <- httr::GET(query_string, authenticate(creds[1,1], creds[1,2]))
       out_xml <- httr::content(out_query, as = "parsed", encoding = "UTF-8")
-      out_xml_list <- XML::htmlTreeParse(out_xml, useInternalNodes = TRUE) %>% XML::xmlRoot()
+      out_xml_list <- xmlRoot(htmlTreeParse(out_xml, useInternalNodes = TRUE))
       out_xml_list <- out_xml_list[["body"]][["feed"]]
       
       
       for (ll in which(names(out_xml_list)=="entry")) {
         
-        in_entry <- XML::saveXML(out_xml_list[[ll]]) %>%
-          strsplit(., "\n")
+        in_entry <- strsplit(saveXML(out_xml_list[[ll]]), "\n")
         
         if (length(which(grepl("<link href=", in_entry[[1]]))) != 0) {
           
           in_entry <- in_entry[[1]]
-
-          title <- in_entry[which(grepl("<title>", in_entry))] %>%
-            gsub("^.*<title>([^<]+)</title>.*$", "\\1", .)
           
-          url <- in_entry[which(grepl("<link href=", in_entry))] %>%
-            gsub("^.*<link href=\"([^\"]+)\"/>.*$", "\\1", .)
+          title <- gsub(
+            "^.*<title>([^<]+)</title>.*$", "\\1", 
+            in_entry[which(grepl("<title>", in_entry))]
+          )
           
-          id_orbit <- in_entry[which(grepl("relativeorbitnumber", in_entry))] %>%
-            gsub("^.*<int name=\"relativeorbitnumber\">([^<]+)</int>.*$", "\\1", .) %>%
-            as.numeric() %>% sprintf("%03i", .)
+          url <- gsub(
+            "^.*<link href=\"([^\"]+)\"/>.*$", "\\1", 
+            in_entry[which(grepl("<link href=", in_entry))]
+          )
           
-          clouds <- in_entry[which(grepl("cloudcoverpercentage", in_entry))] %>%
-            gsub("^.*<double name=\"cloudcoverpercentage\">([^<]+)</double>.*$", "\\1", .) %>%
-            as.numeric()
+          id_orbit <- sprintf("%03i", as.numeric(
+            gsub(
+              "^.*<int name=\"relativeorbitnumber\">([^<]+)</int>.*$", "\\1", 
+              in_entry[which(grepl("\\\"relativeorbitnumber\\\"", in_entry))]
+            )
+          ))
           
-          proc_level <- in_entry[which(grepl("processinglevel", in_entry))] %>%
-            gsub("^.*<str name=\"processinglevel\">Level\\-([^<]+)</str>.*$", "\\1", .)
+          footprint <- tryCatch(
+            st_as_sfc(
+              gsub(
+                "^.*<str name=\"footprint\">([^<]+)</str>.*$", "\\1", 
+                in_entry[which(grepl("\\\"footprint\\\"", in_entry))]
+              ),
+              crs = 4326
+            ),
+            error = function(e) {st_polygon()}
+          )
           
-          mission <- in_entry[which(grepl("platformserialidentifier", in_entry))] %>%
-            gsub("^.*<str name=\"platformserialidentifier\">Sentinel\\-([^<]+)</str>.*$", "\\1", .)
+          clouds <- as.numeric(gsub(
+            "^.*<double name=\"cloudcoverpercentage\">([^<]+)</double>.*$", "\\1",
+            in_entry[which(grepl("\\\"cloudcoverpercentage\\\"", in_entry))]
+          ))
           
-          # id_tile <- in_entry[which(grepl("name=\"tileid\"", in_entry))] %>%
-          #   gsub("^.*<str name=\"tileid\">([^<]+)</str>.*$", "\\1", .)
+          proc_level <- gsub(
+            "^.*<str name=\"processinglevel\">Level\\-([^<]+)</str>.*$", "\\1", 
+            in_entry[which(grepl("\\\"processinglevel\\\"", in_entry))]
+          )
+          
+          mission <- gsub(
+            "^.*<str name=\"platformserialidentifier\">Sentinel\\-([^<]+)</str>.*$", "\\1", 
+            in_entry[which(grepl("\\\"platformserialidentifier\\\"", in_entry))]
+          )
+          
           id_tile <- gsub("^.+_T([0-9]{2}[A-Z]{3})_.+$", "\\1", title)
           
-          # sensing_datetime <- in_entry[which(grepl("name=\"endposition\"", in_entry))] %>%
-          #   gsub("^.*<date name=\"endposition\">([0-9\\-]+)T[0-9\\:\\.]+Z</date>.*$", "\\1", .) %>%
-          #   as.POSIXct()
-          sensing_datetime <- gsub(
-            "^S2[AB]\\_MSIL[12][AC]\\_([0-9]{8}T[0-9]{6})\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}$",
-            "\\1", title
-          ) %>% as.POSIXct(format = "%Y%m%dT%H%M%S", tz = "UTC")
+          sensing_datetime <- as.POSIXct(
+            gsub(
+              "^S2[AB]\\_MSIL[12][AC]\\_([0-9]{8}T[0-9]{6})\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}$",
+              "\\1", 
+              title
+            ),
+            format = "%Y%m%dT%H%M%S", tz = "UTC"
+          )
           
-          creation_datetime <- gsub(
-            "^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_([0-9]{8}T[0-9]{6})$",
-            "\\1", title
-          ) %>% as.POSIXct(format = "%Y%m%dT%H%M%S", tz = "UTC")
+          creation_datetime <- as.POSIXct(
+            gsub(
+              "^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_([0-9]{8}T[0-9]{6})$",
+              "\\1",
+              title
+            ),
+            format = "%Y%m%dT%H%M%S", tz = "UTC"
+          )
           
-          ingestion_datetime <- in_entry[which(grepl("name=\"ingestiondate\"", in_entry))] %>%
-            gsub("^.*<date name=\"ingestiondate\">([0-9\\-]+)T([0-9\\:\\.]+)Z</date>.*$", "\\1 \\2", .) %>%
-            as.POSIXct(tz = "UTC")
+          ingestion_datetime <- as.POSIXct(
+            gsub(
+              "^.*<date name=\"ingestiondate\">([0-9\\-]+)T([0-9\\:\\.]+)Z</date>.*$", 
+              "\\1 \\2", 
+              in_entry[which(grepl("name=\"ingestiondate\"", in_entry))]
+            ),
+            tz = "UTC"
+          )
+          
+          uuid <- gsub(
+            "^.*<str name=\"uuid\">([^<]+)</str>.*$", "\\1", 
+            in_entry[which(grepl("\\\"uuid\\\"", in_entry))]
+          )
+          
           
           # print(paste0(title, ".SAFE"))
           out_list[[n_entries]] <- data.frame(
@@ -373,6 +411,8 @@ s2_list <- function(spatial_extent = NULL,
             sensing_datetime = sensing_datetime,
             ingestion_datetime = ingestion_datetime,
             clouds = clouds,
+            footprint = st_as_text(footprint),
+            uuid = uuid,
             stringsAsFactors = FALSE
           )
           n_entries <- n_entries + 1
@@ -395,7 +435,7 @@ s2_list <- function(spatial_extent = NULL,
   out_dt$online <- if (availability == "ignore") {
     NA
   } else {
-    as.logical(safe_is_online(out_dt))
+    as.logical(safe_is_online(out_dt, verbose = FALSE))
   }
   
   # remove "wrong" tiles and orbits if needed

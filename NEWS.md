@@ -1,3 +1,50 @@
+# Version 1.3.0
+
+## Major changes
+- Support for GDAL 3 / PROJ 6 was added: 
+    - Edit internal function to deal with CRS instead than PROJ.4 strings
+    - Allow `st_crs2()` accepting also WKT strings / EPSG codes in the form `"EPSG:xxxx"`
+    - Edit GUI to accept WKT / to warn if a PROJ.4 is passed
+- After running `sen2r()` a short report is returned to output summarising the status of the required processing (see new internal function `sen2r_process_report()`). This should facilitate applying sen2r in a cycle until all "expected dates" are processed. 
+- Management of Sen2Cor GIPP parameters: now the user can process L1C SAFE images applying a topographic correction (as done to produce L2A images on ESA Hub) or specifying other parameters managed by L2A_GIPP.xml file. To allow doing that, new arguments were added to `sen2cor()` and `sen2r()` (see below) and a new option was added in the GUI.
+
+## New functions
+- `read_gipp()` and `set_gipp()` to read / create GIPP XML files with the parameters passed to Sen2Cor.
+- Internal function `st_as_text_2()` which returns WKT or WKT2 depending on PROJ version
+- Internal function `sen2r_process_report()` to manage processing reports returned by `sen2r()`.
+
+## Deprecated functions
+- Internal function `init_python()` was deprecated (Python is no longer managed by **reticulate**).
+
+## Changes in default argument values
+- New argument `bigtiff` for BigTIFF management in functions `s2_translate()`, `s2_merge()`, `s2_mask()`, `s2_rgb()` and `s2_calcindices()`.
+- New arguments `use_dem` / `gipp` (function `sen2cor()`) and `sen2cor_use_dem` / `sen2cor_gipp` (`sen2r()`) to manage GIPP parameters in Sen2Cor.
+- `use_python` argument in `sen2r()` was deprecated (no longer needed).
+
+## Minor changes
+- All components of the order (available, ordered and notordered) are now saved in JSON files. This allows using them to re-do an order, specifying if re-ordering already ordered datasets or only order the ones identified as "notordered" (based on new argument "reorder").
+- Output messages are formatted so not to exceed output line length.
+- Add support for BigTIFF format.
+- Dependencies **`reticulate`** and **`magrittr`** were removed.
+- Checks on the validity of SAFE products were improved.
+- Add NDBI / NDVIre indices (#241).
+- Add footprint among metadata retrieved using `safe_getMetadata()` (from existing offline SAFE archives) and `s2_list()` (from SciHub online metadata).
+- Filter offline SAFE archives by footprint instead than by S2 tile ID, so skipping using images which do not contain any data for a specific Area Of Interest.
+- Add method to convert class `safelist` to `sf` (using footprint).
+- Rewrite `st_crs2()` using class methods (see the function help for newly accepted inputs).
+- `safe_getMetadata()` now directly read XML SAFE files instead than calling GDAL through **`reticulate`** (this avoids errors in particular OS conditions).
+- Do not use PROJ4 string with PROJ > 3 (https://rsbivand.github.io/ECS530_h19/ECS530_III.html).
+- Retrieve the GDAL installation path using `gdal-config` instead than `whereis gdalinfo`.
+- Add a test for reprojection without EPSG.
+- Return a warning if SciHub is down.
+- Improve documentation about the problem occurring using newly created credentials.
+
+## Fixes
+- Fix errors "DLL load failed" with Python GDAL scripts on Windows (see #231 and #234) due to a missing `proj.db` file in **`rgdal`**.
+- Hide warning using PROJ >= 6 (https://github.com/rspatial/raster/issues/78).
+- Other various bug fixes (see issues).
+
+
 # Version 1.2.1
 
 ## Major changes
@@ -83,7 +130,7 @@ remotes::install_packages_github("ranghetti/sen2r")
 * Add **`stars`** dependency.
 
 ## New functions
-* `str_pad2()`, equivalent to str_pad() without the needing to load "stringr".
+* `str_pad2()`, equivalent to str_pad() without the needing to load `stringr`.
 * `raster_metadata()`, to get raster metadata, without rgdal dependency.
 * `check_scihub_login()` to check if SciHub credentials are right.
 * `check_scihub_connection()` to check for internet connectivity.
@@ -230,9 +277,9 @@ This is an improvement of version 0.3.2, with several fixes and improvements.
 * Parallelise functions and manage errors
 * Create load_binpaths() (#87: Create a function to load paths of external executables and adapt other functions to use it.
 * Implement search for ingestion date
-* Split names_missing into names_cloudcovered and names_missing
+* Split `names_missing` into `names_cloudcovered` and `names_missing`
 * Add some burn indices and update spectral indices from IDB
-* Change some function names (s2_getMetadata -> safe_getMetadata; s2_shortname -> safe_shortname; fs2nc_getElements -> sen2r_getElements)
+* Change some function names (`s2_getMetadata` -> `safe_getMetadata`; `s2_shortname` -> `safe_shortname`; `fs2nc_getElements` -> `sen2r_getElements`)
 
 ### Fixes
 * Ignore baseline in computing required SAFE names
@@ -277,7 +324,7 @@ In general, now the whole processing chain can be optionally launched in single 
 ### Addition to existing functions
 
 * Improvement in integer / byte data types for generation of indices: 
-Int16 is now the default data type; choosing an integer data type the output values are clipped on the valid format range, and the scaling factor can be chosen by the user; chosing Byte, interval -1 to 1 is coerced to 0-200 (with nodata=255).
+Int16 is now the default data type; choosing an integer data type the output values are clipped on the valid format range, and the scaling factor can be chosen by the user; choosing Byte, interval -1 to 1 is coerced to 0-200 (with nodata=255).
 
 * Use standard nodata values to compute indices.
 
@@ -289,7 +336,7 @@ now it is possible to define masks with a custom combination of SCL classes to b
 * Allow argument "timewindow" in `sen2r()` to be a single integer value, which is interpreted as the period between today and *n* days ago.
 
 * Uniform temporary directories (#73).
-Now the principal functions have the parameters tmpdir and rmtmp to set the temporary directory and the choice to delete /not to delete temporary files. Only two exceptions: create_indices_db() uses a fixed temporary directory (since it is a function intended not to be run by end users); sen2cor() launched from sen2r() uses a default temporary directory if tempdir is in a SAMBA mountpoint over Windows.
+Now the principal functions have the parameters tmpdir and rmtmp to set the temporary directory and the choice to delete /not to delete temporary files. Only two exceptions: create_indices_db() uses a fixed temporary directory (since it is a function intended not to be run by end users); sen2cor() launched from sen2r() uses a default temporary directory if `tmpdir` is in a SAMBA mountpoint over Windows.
 
 ### Other changes
 

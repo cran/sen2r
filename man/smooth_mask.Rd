@@ -4,8 +4,15 @@
 \alias{smooth_mask}
 \title{Buffer cloud masks}
 \usage{
-smooth_mask(inmask, binpaths, tmpdir = tempdir(), radius = 250,
-  buffer = 250, namask = NULL)
+smooth_mask(
+  inmask,
+  binpaths,
+  tmpdir = tempdir(),
+  radius = 250,
+  buffer = 250,
+  namask = NULL,
+  bigtiff = FALSE
+)
 }
 \arguments{
 \item{inmask}{The path of the input 0-1 mask (where 0 represents the area
@@ -28,6 +35,9 @@ masked area after smoothing it (positive to enlarge, negative to reduce).}
 the area of the original file with NA values (which should not be
 smoothed / buffered).
 Default (NULL) means that no NA values are present.}
+
+\item{bigtiff}{(optional) Logical: if TRUE, the creation of a BigTIFF is
+forced (default is FALSE).}
 }
 \value{
 The path of the smoothed mask.

@@ -32,7 +32,10 @@ testthat::test_that(
     # check sen2r output format
     testthat::expect_is(out1, "character")
     testthat::expect_equivalent(out1, exp_outpath_1)
-    testthat::expect_equal(names(attributes(out1)), c("procpath", "cloudcovered", "missing"))
+    testthat::expect_equal(
+      names(attributes(out1)), 
+      c("procpath", "cloudcovered", "missing", "status")
+    )
     
     # test on raster metadata
     exp_meta_r <- raster_metadata(exp_outpath_1, format = "list")[[1]]
@@ -53,8 +56,9 @@ testthat::test_that(
     testthat::expect_equal(exp_meta_s$extent_name, "")
     
     # test on raster values
-    r <- raster::raster(exp_outpath_1)
-    testthat::expect_equal(raster::cellStats(r, "mean"), 4.729521, tolerance = 1e-3)
+    exp_stars <- stars::read_stars(exp_outpath_1)
+    testthat::expect_equal(mean(exp_stars[[1]], na.rm=TRUE), 4.729521, tolerance = 1e-03)
+    rm(exp_stars)
     
   }
 )
@@ -79,7 +83,10 @@ testthat::test_that(
         overwrite = TRUE,
         thumbnails = FALSE
       ),
-      regexp = "[Aa]t least one parameter among 'extent' and 's2tiles_selected' must be provided"
+      regexp = gsub(
+        " ", "[ \n]",
+        "[Aa]t least one parameter among 'extent' and 's2tiles_selected' must be provided"
+      )
     )
     
   }

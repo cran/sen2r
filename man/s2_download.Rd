@@ -4,8 +4,15 @@
 \alias{s2_download}
 \title{Download S2 products.}
 \usage{
-s2_download(s2_prodlist = NULL, downloader = "builtin", apihub = NA,
-  tile = NULL, outdir = ".", order_lta = TRUE, overwrite = FALSE)
+s2_download(
+  s2_prodlist = NULL,
+  downloader = "builtin",
+  apihub = NA,
+  tile = NULL,
+  outdir = ".",
+  order_lta = TRUE,
+  overwrite = FALSE
+)
 }
 \arguments{
 \item{s2_prodlist}{Named character: list of the products to be downloaded,
@@ -33,7 +40,8 @@ if FALSE, they are simply skipped.}
 overwritten? (default: FALSE)}
 }
 \value{
-NULL (the function is called for its side effects)
+Vector character with the list ot the output products
+(being downloaded or already existing).
 }
 \description{
 The function downloads S2 products.
@@ -47,7 +55,7 @@ License: GPL 3.0
 \examples{
 \dontrun{
 single_s2 <- paste0("https://scihub.copernicus.eu/apihub/odata/v1/",
-  "Products(\\'c7142722-42bf-4f93-b8c5-59fd1792c430\\')/$value")
+  "Products(\'c7142722-42bf-4f93-b8c5-59fd1792c430\')/$value")
 names(single_s2) <- "S2A_MSIL1C_20170613T101031_N0205_R022_T32TQQ_20170613T101608.SAFE"
 # (this is equivalent to:
 # single_s2 <- example_s2_list[1]
@@ -68,7 +76,7 @@ s2_download(list_safe, outdir=tempdir())
 }
 }
 \author{
-Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}
+Luigi Ranghetti, phD (2020) \email{luigi@ranghetti.info}
 
 Lorenzo Busetto, phD (2019) \email{lbusett@gmail.com}
 }

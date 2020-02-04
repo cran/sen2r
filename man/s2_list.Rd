@@ -4,18 +4,26 @@
 \alias{s2_list}
 \title{Retrieve list of available S2 products.}
 \usage{
-s2_list(spatial_extent = NULL, tile = NULL, orbit = NULL,
-  time_interval = c(Sys.Date() - 10, Sys.Date()), time_period = "full",
-  level = "auto", apihub = NA, max_cloud = 100,
-  availability = "ignore", output_type = "deprecated")
+s2_list(
+  spatial_extent = NULL,
+  tile = NULL,
+  orbit = NULL,
+  time_interval = c(Sys.Date() - 10, Sys.Date()),
+  time_period = "full",
+  level = "auto",
+  apihub = NA,
+  max_cloud = 100,
+  availability = "ignore",
+  output_type = "deprecated"
+)
 }
 \arguments{
 \item{spatial_extent}{A valid spatial object object of class \code{sf},
 \code{sfc} or \code{sfg}}
 
-\item{tile}{\code{string array} Sentinel-2 Tiles to be considered string (5-length character)}
+\item{tile}{\verb{string array} Sentinel-2 Tiles to be considered string (5-length character)}
 
-\item{orbit}{\code{string array} Sentinel-2 orbit numbers to be considered}
+\item{orbit}{\verb{string array} Sentinel-2 orbit numbers to be considered}
 
 \item{time_interval}{Dates to be considered, as a temporal vector (class \link{POSIXct} or
 \link{Date}, or string in \code{YYYY-mm-dd} format) of length 1 (specific day) or 2 (time interval).}
@@ -47,14 +55,14 @@ level of the tiles to be listed (default: no filter).}
 \item{availability}{Character argument, determining which products have
 to be returned:
 \itemize{
-\item "online" : only archive names already available for download are returned;
-\item "lta": only archive names stored in the Long Term Archive
-(see https://scihub.copernicus.eu/userguide/LongTermArchive)
+\item \code{"online"} : only archive names already available for download are returned;
+\item \code{"lta"}: only archive names stored in the
+\href{https://scihub.copernicus.eu/userguide/LongTermArchive}{Long Term Archive}
 are returned;
-\item "check": all archive names are returned, checking if they are
+\item \code{"check"}: all archive names are returned, checking if they are
 available or not for download (see "Value" to know
 how to distinguish each other);
-\item "ignore" (default): all archive names are returned, without doing the check
+\item \code{"ignore"} (default): all archive names are returned, without doing the check
 (running the function is faster).
 }}
 
@@ -104,8 +112,8 @@ safe_getMetadata(example_s2_list, "sensing_datetime")
 }
 \author{
 Lorenzo Busetto, phD (2019) \email{lbusett@gmail.com} - Inspired by
-function \code{getSentinel_query} of package \code{getSpatialData} by J. Schwalb-Willmann
-(https://github.com/16EAGLE/getSpatialData)
+function \code{getSentinel_query} of package
+\href{https://github.com/16EAGLE/getSpatialData}{\code{getSpatialData}} by J. Schwalb-Willmann
 
 Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}
 }

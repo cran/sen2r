@@ -36,11 +36,16 @@
 #' ## Convert to other classes
 #' (s2_char <- as.character(list_safe)) # convert to a simple named character
 #' (s2_df <- as.data.frame(list_safe)) # convert to a data.frame
-#' library(data.table); (s2_dt <- as.data.table(list_safe)) # convert to a data.table
+#' library(data.table)
+#' (s2_dt <- as.data.table(list_safe)) # convert to a data.table
+#' library(sf)
+#' (s2_sf <- st_as_sf(list_safe)) # convert to sf
 #' 
 #' ## Convert from other classes
 #' as(s2_char, "safelist") # this causes the loss of hidden attributes
-#' as(s2_df, "safelist") # this maintains attributes as columns
+#' as(s2_df, "safelist") # this (and followings) maintain attributes as columns
+#' as(s2_dt, "safelist")
+#' as(s2_sf, "safelist")
 #' }
 
 setClass("safelist", contains = "character")
@@ -51,15 +56,43 @@ setClass("safelist", contains = "character")
 setAs("character", "safelist", function(from) {
   # import x if it is the path of a JSON filelist
   if (all(length(from) == 1, file.exists(from))) {
-    from <- unlist(jsonlite::fromJSON(from))
+    from <- jsonlite::fromJSON(from)
   }
-  # check if input can be converted
-  if (any(c(
-    is.null(names(from)),
-    !grepl("^http.+Products\\(.+\\)/\\$value$", as.vector(from)),
-    !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", names(from))
-  ))) {
-    stop("cannot convert to safelist (input format not recognised)")
+  if (length(nn(from)) == 0) {} else if (
+    length(names(from)) == 3 && 
+    all(names(from) == c("ordered", "available", "notordered"))
+  ) {
+    # check if input can be converted - case of list saved by s2_order
+    order_status <- c(
+      rep("available", length(from$available)),
+      rep("ordered", length(from$ordered)),
+      rep("notordered", length(from$notordered))
+    )
+    from <- c(from$available, from$ordered, from$notordered)
+    from <- setNames(as.character(from), names(from))
+    # add an "order_status" attribute, used in s2_order to eventually re-check
+    # order status, or just order datasets with attribute "notordered"
+    attr(from, "order_status") <- order_status
+    if (any(c(
+      is.null(names(from)),
+      !grepl("^http.+Products\\(.+\\)/\\$value$", as.vector(from)),
+      !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", names(from))
+    ))) {
+      stop("cannot convert to safelist (input format not recognised)")
+    }
+  } else {
+    # check if input can be converted - case of list saved by s2_list, or "bare"
+    if (is(from, "list")) {
+      from <- setNames(as.character(from), names(from))
+    }
+    # list
+    if (any(c(
+      is.null(names(from)),
+      !grepl("^http.+Products\\(.+\\)/\\$value$", as.vector(from)),
+      !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", names(from))
+    ))) {
+      stop("cannot convert to safelist (input format not recognised)")
+    }
   }
   class(from) <- unique(c("safelist", class(from)))
   from
@@ -67,7 +100,7 @@ setAs("character", "safelist", function(from) {
 
 setAs("data.frame", "safelist", function(from) {
   # check if input can be converted
-  if (any(c(
+  if (nrow(from) == 0) {} else if (any(c(
     is.null(from$name), is.null(from$url), 
     !grepl("^http.+Products\\(.+\\)/\\$value$", from$url),
     !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", from$name)
@@ -89,12 +122,15 @@ setAs("data.frame", "safelist", function(from) {
   as(to, "safelist")
 })
 
+setAs("sf", "safelist", function(from) {
+  as(as.data.frame(from), "safelist")
+})
 
 ## Methods FROM safelist
 
 #' @export
 as.data.frame.safelist <- function(x, row.names = NULL, optional = FALSE, ...) {
-  to <- data.frame(name = names(x), url = as.vector(x))
+  to <- data.frame(name = names(x), url = as.vector(x), stringsAsFactors = FALSE)
   autoRN <- (is.null(row.names) || length(row.names) != nrow(to))
   attr(to, "row.names") <- if (autoRN) {seq_len(nrow(to))} else {row.names}
   
@@ -127,37 +163,20 @@ setAs("safelist", "character", function(from) {
   as.character(from)
 })
 
+#' @export
+st_as_sf.safelist <- function(x, ...) {
+  if (!is.null(attr(x, "footprint"))) {
+    sf::st_as_sf(as.data.frame(x), wkt = "footprint", crs = 4326)
+  } else {
+    stop("cannot convert to safelist (missing footprint)")
+  }
+}
+setAs("safelist", "sf", function(from) {
+  st_as_sf(from)
+})
 
-## Print methods
 
-# #' @export
-# print.s2dt = function(x) {
-#   if (!all(c("name","url") %in% names(x))) {
-#     print(data.table(x))
-#   } else {
-#     printed_cols <- c("name", "url")
-#     x_print <- as.data.frame(x)[seq_len(min(nrow(x),5)), printed_cols]
-#     x_print$url <- paste0(substr(x_print$url,1,20),"...")
-#     cat("A data.table with", nrow(x), "SAFE archives.\n")
-#     print.data.frame(x_print)
-#     if (nrow(x) > 5 | ncol(x) > ncol(x_print)) {
-#       cat("...with")
-#       if (nrow(x) > 5) {
-#         cat("", nrow(x)-5, "more rows")
-#       }
-#       if (nrow(x) > 5 & ncol(x) > ncol(x_print)) {
-#         cat(" and")
-#       }
-#       if (ncol(x) > ncol(x_print)) {
-#         cat("", ncol(x)-ncol(x_print), "more columns: ")
-#         cat(paste(names(x)[!names(x) %in% printed_cols], collapse = ", "))
-#       }
-#       cat(".\n")
-#     }
-#   }
-#   invisible(x)
-# }
-
+## Print method
 #' @export
 print.safelist = function(x, ...) {
   x_print <- as.character(x)[seq_len(min(length(x),5))]

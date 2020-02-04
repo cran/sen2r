@@ -54,14 +54,28 @@
 #'  not to delete; "l1c" to delete only Level-1C products.
 #' @param step_atmcorr (optional) Character vector to determine how to obtain
 #'  Level-2A SAFE products:
-#'  * "auto" (default) means that L2A is first
+#'  * `"auto"` (default) means that L2A is first
 #'  searched on SciHub: if found, it is downloaded, if not, the
 #'  corresponding Level-1C is downloaded and sen2cor is used to
 #'  produce L2A;
-#'  * "scihub" means that Sen2Cor is always used from L1C products
+#'  * `"scihub"` means that Sen2Cor is always used from L1C products
 #'  downloaded from SciHub;
-#'  * "l2a" means that they are downloaded if available on SciHub,
+#'  * `"l2a"` means that they are downloaded if available on SciHub,
 #'  otherwise they are skipped (sen2cor is never used).
+#' @param sen2cor_use_dem (optional) Logical, determining if a DEM should be
+#'  used for topographic correction by Sen2Cor (see the documentation of 
+#'  [sen2cor()] - argument `use_dem` for further details).
+#'  Currently the default value is NA in order to grant backward compatibility:
+#'  in this case, the option set in the XML GIPP configuration file 
+#'  used by sen2r (stored in the default sen2r settings directory) is respected.
+#'  
+#'  _Note_: in a future release of sen2r, the default value will be
+#'  set to TRUE, so to grant homogeneity between Level-2A products downloaded
+#'  from ESA Hub and generated using Sen2Cor.
+#' @param sen2cor_gipp (optional) Ground Image Processing Parameters (GIPP)
+#'  to be passed to Sen2Cor (see the documentation of [sen2cor()] - argument
+#'  `gipp` - for details about the usage of this argument).
+#'  Default value (NA) corresponds to an empty list of parameters.
 #' @param max_cloud_safe (optional) Integer number (0-100) containing
 #'  the maximum cloud level of each SAFE to be considered (default: no filter).
 #'  It it used to limit the research of SAFE products to "good" images,
@@ -173,22 +187,23 @@
 #' @param proj (optional) Character string with the pro4string of the output
 #'  resolution. default value (NA) means not to reproject.
 #' @param resampling (optional) Resampling method (one of the values supported
-#'  by `gdal_translate`: "near" (default), "bilinear", "cubic",
-#'  "cubicspline", "lanczos", "average" or "mode").
+#'  by `gdal_translate`: `"near"` (default), `"bilinear"`, `"cubic"`,
+#'  `"cubicspline"`, `"lanczos"`, `"average"` or `"mode"`).
 #' @param resampling_scl (optional) Resampling method for categorical products
-#'  (for now, only SCL): one among "near" (default) and "mode".
+#'  (for now, only SCL): one among `"near"` (default) and `"mode"`.
 #' @param outformat (optional) Format of the output file (in a
-#'  format recognised by GDAL). Default is "GTiff".
+#'  format recognised by GDAL). Default is `"GTiff"`.
+#'  Value `"BigTIFF"` can be used to generate a GeoTIFF with the option BigTIFF
 #' @param rgb_outformat (optional) Format of the output RGB products (in a
-#'  format recognised by GDAL). Default is "GTiff".
+#'  format recognised by GDAL). Default is `"GTiff"`.
 #' @param index_datatype (optional) Numeric datatype of the output
 #'  spectral indices (see [s2_calcindices].
 #' @param compression (optional) In the case GTiff is chosen as
 #'  output format, the compression indicated with this parameter is
 #'  used (default is "DEFLATE").
-#' @param rgb_compression (optional) In the case GTiff is chosen as
+#' @param rgb_compression (optional) In the case `GTiff` is chosen as
 #'  output format for RGB products, the compression indicated
-#'  with this parameter is used (default is "DEFLATE").
+#'  with this parameter is used (default is `"DEFLATE"`).
 #'  In the cases GTiff or JPEG are chosen as output format for RGB products,
 #'  this parameter can also be a 1-100 integer value, which is interpreted
 #'  as the compression level for a JPEG compression.
@@ -228,7 +243,7 @@
 #'  added for each product created. Thumbnails are JPEG or PNG georeferenced
 #'  small images (width or height of 1024 pixels) with default colour palettes
 #'  (for more details, see the help window in the GUI). They are placed in
-#'  a subdirectory of the products names "thumbnails".
+#'  a subdirectory of the products names `"thumbnails"`.
 #'  If FALSE, they are not created.
 #' @param parallel (optional) Logical or integer: setting to TRUE, the processing
 #'  is executed using multiple cores in order to speed up the execution.
@@ -241,7 +256,7 @@
 #'  order used to execute the processing chain (this affects the speed
 #'  of computation and the usage of system resources).
 #'  Values can be one of the followings:
-#'  - "4" or "by_groups" (default):
+#'  - `"4"` or `"by_groups"` (default):
 #'      it provides a good compromise between processing speed and disk usage.
 #'      Processing is done as follows:
 #'      1. the list of required SAFE and output product names is computed;
@@ -252,7 +267,7 @@
 #'          - Sen2Cor is applied in parallel using one core per L1C SAFE archive;
 #'          - the remaining processing operations are executed using parallel
 #'              R sessions (one core for each date).
-#'  - "2" or "by_date":
+#'  - `"2"` or `"by_date"`:
 #'      this allows minimising the requirements of disk usage
 #'      (in particular if SAFE archives are deleted after processing).
 #'      It is similar to the default execution, but each group is composed
@@ -260,7 +275,7 @@
 #'      and temporary files is lower,
 #'      but it is generally slower than the default one because
 #'      parallel computation over dates for products' generation is not possible.
-#'  - "3" or "mixed":
+#'  - `"3"` or `"mixed"`:
 #'      this allows maximising CPU usage and processing speed.
 #'      The cycle on groups is ignored, and all the required SAFE are
 #'      first of all downloaded and/or produced, and then dates are
@@ -268,19 +283,14 @@
 #'      This mode is faster than the default mode, but it requires
 #'      all SAFE archives to be downloaded and processed before performing
 #'      subsequent steps, thus increasing disk space requirements.
-#'  - "1" or "by_step":
+#'  - `"1"` or `"by_step"`:
 #'      this is the legacy mode, in which the cycle on groups is ignored
 #'      as well as the parallel computation over dates.
 #'      All SAFE archives are first downloaded/processed,
 #'      then the processing steps are performed sequentially.
 #'      This mode is similar to the previous one in terms of disk usage
 #'      but it is slightly slower; its advantage are the lower RAM requirements.
-#' @param use_python (optional) Logical: if TRUE (default), the presence of
-#'  python in the system is checked before running the function;
-#'  if FALSE, this is skipped. Setting this to FALSE can be useful on
-#'  systems with problems with python, when [sen2r()] is intended
-#'  to be used only for processing existing SAFE files (python is required
-#'  in any case to download SAFE).
+#' @param use_python Deprecated argument
 #' @param tmpdir (optional) Path where intermediate files will be created.
 #'  Default is a temporary directory (unless `outformat = "VRT"`: in this case,
 #'  default is a subdirectory named ".vrt" within `path_out`).
@@ -303,15 +313,22 @@
 #'      function;
 #'  - `ltapath` with the path of a json file containing the list of the 
 #'      SAFE Sentinel-2 archives eventually ordered in Long Term Archive.
+#'  - `status` with a data.frame summarising the status of the processing (see
+#'     [sen2r_process_report()]).
 #'
 #' @import data.table
 #' @importFrom utils packageVersion
 #' @importFrom geojsonio geojson_json
-#' @importFrom jsonlite fromJSON
-#' @importFrom sf st_cast st_read st_combine st_as_sf st_is_valid
-#' @importFrom methods formalArgs
-#' @importFrom stats na.omit
+#' @importFrom jsonlite fromJSON toJSON
+#' @importFrom foreach foreach "%do%" "%dopar%"
+#' @importFrom sf st_as_sfc st_cast st_combine st_crs st_intersects st_is_valid
+#'  st_read st_transform st_union
+#' @importFrom methods formalArgs is
+#' @importFrom stats na.omit setNames
 #' @export
+#' @author Luigi Ranghetti, phD (2020) \email{luigi@@ranghetti.info}
+#' @author Lorenzo Busetto, phD (2020) \email{lbusett@@gmail.com}
+#' @note License: GPL 3.0
 #' @examples
 #' \donttest{
 #' # Open an interactive section
@@ -397,7 +414,7 @@
 sen2r <- function(param_list = NULL,
                   gui = NA,
                   preprocess = TRUE,
-                  s2_levels = c("l1c","l2a"),
+                  s2_levels = "l2a",
                   sel_sensor = c("s2a","s2b"),
                   online = TRUE,
                   order_lta = TRUE,
@@ -406,6 +423,8 @@ sen2r <- function(param_list = NULL,
                   overwrite_safe = FALSE,
                   rm_safe = "no",
                   step_atmcorr = "auto",
+                  sen2cor_use_dem = NA,
+                  sen2cor_gipp = NA,
                   max_cloud_safe = 100,
                   timewindow = NA,
                   timeperiod = "full",
@@ -448,7 +467,7 @@ sen2r <- function(param_list = NULL,
                   thumbnails = TRUE,
                   parallel = FALSE,
                   processing_order = "by_groups",
-                  use_python = TRUE,
+                  use_python = NA,
                   tmpdir = NA,
                   rmtmp = TRUE,
                   log = NA) {
@@ -491,6 +510,8 @@ sen2r <- function(param_list = NULL,
     overwrite_safe = overwrite_safe,
     rm_safe = rm_safe,
     step_atmcorr = step_atmcorr,
+    sen2cor_use_dem = sen2cor_use_dem,
+    sen2cor_gipp = sen2cor_gipp,
     max_cloud_safe = max_cloud_safe,
     timewindow = timewindow,
     timeperiod = timeperiod,
@@ -585,6 +606,8 @@ sen2r <- function(param_list = NULL,
                    overwrite_safe,
                    rm_safe,
                    step_atmcorr,
+                   sen2cor_use_dem,
+                   sen2cor_gipp,
                    max_cloud_safe,
                    timewindow,
                    timeperiod,
@@ -627,7 +650,7 @@ sen2r <- function(param_list = NULL,
                    thumbnails,
                    parallel,
                    processing_order,
-                   use_python,
+                   use_python = NA,
                    tmpdir,
                    rmtmp,
                    log,
@@ -648,8 +671,9 @@ sen2r <- function(param_list = NULL,
     while(is.na(open_check_gui)) {
       open_check_gui_prompt <- print_message(
         type="waiting",
-        # "It seems you are running this package for the first time. ",
-        "Do you want to install the required dependencies using a GUI? (y/n) "
+        "It seems you are running this package for the first time. ",
+        "Do you want to verify/install the required dependencies using a GUI (otherwise, an
+        automatic check will be performed)? (y/n) ", 
       )
       open_check_gui <- if (grepl("^[Yy]",open_check_gui_prompt)) {
         TRUE
@@ -673,14 +697,14 @@ sen2r <- function(param_list = NULL,
   print_message(
     type = "message",
     date = TRUE,
-    "Starting sen2r execution."
+    "####\u00A0 Starting sen2r execution. \u00A0####\n"
   )
   
-  # import python modules
-  # check that python and the required modules are installed
-  if (use_python == TRUE) {
-    py <- init_python()
-  }
+  # # import python modules
+  # # check that python and the required modules are installed
+  # if (use_python == TRUE) {
+  #   py <- init_python()
+  # }
   
   
   ## 1. Read / import parameters ##
@@ -749,10 +773,10 @@ sen2r <- function(param_list = NULL,
       while(is.na(open_gui)) {
         open_gui_prompt <- print_message(
           type="waiting",
-          "\nThe parameter file was created with an old version of the package:\n",
+          "\nThe parameter file was created with an old version of the package: ",
           "would you like to open a GUI and check that the input parameters are correct? (y/n)\n",
           # "Note that continuing without checking them could lead to errors.\n",
-          "Alternatively, press ESC to interrupt and check the parameter file manually.\n"
+          "Alternatively, press ESC to interrupt and check the parameter file manually."
         )
         open_gui <- if (grepl("^[Yy]",open_gui_prompt)) {
           gui <- TRUE
@@ -789,7 +813,9 @@ sen2r <- function(param_list = NULL,
         date = TRUE,
         "Program interrupted by the user (GUI closed)."
       )
-      return()
+      sen2r_output <- character(0)
+      attr(sen2r_output, "status") <- data.frame(completed = FALSE)
+      return(invisible(sen2r_output))
     }
     
     print_message(
@@ -825,8 +851,10 @@ sen2r <- function(param_list = NULL,
   )
   pm_exported <- pm[!names(pm) %in% c(".only_list_names", "globenv")]
   if (inherits(pm$extent, "sf") | inherits(pm$extent, "sfc")) {
-    pm_exported$extent <- st_transform(pm$extent, 4326) %>%
-      geojson_json(pretty=TRUE)
+    pm_exported$extent <- geojson_json(
+      st_transform(pm$extent, 4326),
+      pretty = TRUE
+    )
   }
   if (inherits(pm$pkg_version, "numeric_version")) {
     pm_exported$pkg_version <- as.character(pm$pkg_version)
@@ -881,7 +909,7 @@ sen2r <- function(param_list = NULL,
   if (pm$preprocess == FALSE & !pm$processing_order %in% c(1,"by_step")) {
     print_message(
       type = "warning",
-      "only processing_order = \"by_step\" is accepted if preprocess = FALSE."
+      "Only processing_order = \"by_step\" is accepted if preprocess = FALSE."
     )
     pm$processing_order <- "by_step"
   }
@@ -967,6 +995,21 @@ sen2r <- function(param_list = NULL,
   }
   list_prods <- list_prods[!is.na(list_prods)]
   
+  # Exit gracefully if preprocess = TRUE and list_prods is empty
+  if (pm$preprocess == TRUE && length(list_prods) == 0) {
+    print_message(
+      type ="message",
+      "No output products selected. Use \"preprocess = FALSE\" if you only want to download S2 images.\n" 
+    )
+    print_message(
+      type = "message",
+      date = TRUE,
+      "####\u00A0 Execution of sen2r session terminated. \u00A0####"
+    )
+    
+    return(invisible(character(0)))
+  }
+  
   # update s2_levels if processing is TRUE (retrieve from products)
   if (pm$preprocess==TRUE) {
     pm$s2_levels <- c(
@@ -979,7 +1022,8 @@ sen2r <- function(param_list = NULL,
   parent_paths <- sapply(
     pm[c("path_l1c","path_l2a","path_tiles","path_merged","path_out","path_rgb","path_indices")],
     function(x){if(is.na(nn(x))){NA}else{dirname(x)}}
-  ) %>% unique() %>% na.omit() %>% as.character()
+  )
+  parent_paths <- as.character(na.omit(unique(parent_paths)))
   paths_exist <- sapply(parent_paths, file.exists)
   if (any(!paths_exist)) {
     print_message(
@@ -1001,9 +1045,15 @@ sen2r <- function(param_list = NULL,
   
   # check output format
   # sel_driver <- py$gdal$GetDriverByName(pm$outformat)
-  gdal_formats <- fromJSON(
+  if (pm$outformat == "BigTIFF") {
+    pm$outformat <- "GTiff"
+    bigtiff <- TRUE
+  } else {
+    bigtiff <- FALSE
+  }
+  suppressWarnings(gdal_formats <- fromJSON( # suppress warning about geojsonlint
     system.file("extdata/settings/gdal_formats.json",package="sen2r")
-  )$drivers
+  )$drivers)
   sel_driver <- gdal_formats[gdal_formats$name==pm$outformat,]
   sel_rgb_driver <- gdal_formats[gdal_formats$name==pm$rgb_outformat,]
   
@@ -1046,7 +1096,7 @@ sen2r <- function(param_list = NULL,
   ### Find SAFE and compute the names of required files ###
   
   ## 2. List required products ##
-  s2_lists <- s2_lists_islta <- list()
+  s2_lists <- s2_lists_islta <- s2_lists_footprints <- list()
   
   if (pm$online == TRUE) {
     
@@ -1074,8 +1124,9 @@ sen2r <- function(param_list = NULL,
         availability = "check",
         apihub = pm$apihub
       )
+      s2_lists_footprints[["l1c"]] <- nn(attr(s2_lists[["l1c"]], "footprint"))
       # save lta availability (TRUE if on LTA, FALSE if online)
-      s2_lists_islta[["l1c"]] <- !attr(s2_lists[["l1c"]], "online")
+      s2_lists_islta[["l1c"]] <- !nn(attr(s2_lists[["l1c"]], "online"))
       names(s2_lists_islta[["l1c"]]) <- names(s2_lists[["l1c"]])
     }
     if ("l2a" %in% pm$s2_levels) {
@@ -1101,8 +1152,9 @@ sen2r <- function(param_list = NULL,
         availability = "check",
         apihub = pm$apihub
       )
+      s2_lists_footprints[["l2a"]] <- nn(attr(s2_lists[["l2a"]], "footprint"))
       # save lta availability (TRUE if on LTA, FALSE if online)
-      s2_lists_islta[["l2a"]] <- !attr(s2_lists[["l2a"]], "online")
+      s2_lists_islta[["l2a"]] <- !nn(attr(s2_lists[["l2a"]], "online"))
       names(s2_lists_islta[["l2a"]]) <- names(s2_lists[["l2a"]])
     }
     
@@ -1111,6 +1163,10 @@ sen2r <- function(param_list = NULL,
     # if offline mode, read the SAFE product list from folders and filter
     if ("l1c" %in% pm$s2_levels) {
       s2_lists[["l1c"]] <- list.files(pm$path_l1c, "\\.SAFE$")
+      s2_lists_footprints[["l1c"]] <- safe_getMetadata(
+        file.path(pm$path_l1c, s2_lists[["l1c"]]), 
+        "footprint", abort = FALSE, format = "vector", simplify = TRUE
+      )
     }
     if ("l2a" %in% pm$s2_levels) {
       s2_lists[["l2a"]] <- if (pm$step_atmcorr=="l2a") {
@@ -1133,6 +1189,10 @@ sen2r <- function(param_list = NULL,
             ]
         )
       }
+      s2_lists_footprints[["l2a"]] <- safe_getMetadata(
+        file.path(pm$path_l2a, s2_lists[["l2a"]]), 
+        "footprint", abort = FALSE, format = "vector", simplify = TRUE
+      )
     }
     s2_lists <- lapply(s2_lists, function(l) {
       safe_getMetadata(l, "level", abort = FALSE, format = "vector", simplify = TRUE)
@@ -1141,8 +1201,9 @@ sen2r <- function(param_list = NULL,
     
   }
   s2_list <- unlist(s2_lists)[!duplicated(unlist(lapply(s2_lists, names)))]
+  s2_list_footprints <- unlist(s2_lists_footprints)[!duplicated(unlist(lapply(s2_lists, names)))]
   s2_list_islta <- unlist(s2_lists_islta)[!duplicated(unlist(lapply(s2_lists_islta, names)))]
-  rm(s2_lists, s2_lists_islta)
+  rm(s2_lists, s2_lists_islta, s2_lists_footprints)
   
   # If s2_list is empty, exit
   if (length(s2_list)==0) {
@@ -1169,18 +1230,14 @@ sen2r <- function(param_list = NULL,
     names(s2_list), 
     info = c("nameinfo"), format = "data.table"
   )
-  # s2_dt <- lapply(names(s2_list), function(x) {
-  #   unlist(safe_getMetadata(x, info="nameinfo")) %>%
-  #     t() %>%
-  #     as.data.frame(stringsAsFactors=FALSE)
-  # }) %>%
-  #   rbindlist(fill=TRUE)
+  s2_dt$footprint <- s2_list_footprints
   if (nrow(s2_dt)==0) {
     # generate column names for empty dt (to avoid errors)
     s2_dt <- safe_getMetadata(
       "S2A_MSIL2A_20000101T000000_N0200_R001_T01TAA_20000101T000000.SAFE",
       info = "nameinfo", format = "data.table"
     )[-1,]
+    s2_dt$footprint <- character(0)
   }
   s2_dt[,"lta":=if (is.null(s2_list_islta)) {FALSE} else {s2_list_islta}]
   s2_dt[,c("name","url"):=list(nn(names(s2_list)),nn(s2_list))]
@@ -1277,6 +1334,13 @@ sen2r <- function(param_list = NULL,
   if (all(!is.na(pm$s2orbits_selected))) {
     s2_dt <- s2_dt[id_orbit %in% pm$s2orbits_selected,]
   }
+  # if extent and footprint are defined, filter SAFEs on footprints
+  if (all(!is(pm$extent, "logical"), !anyNA(pm$extent), !is.na(s2_dt$footprint))) {
+    s2_dt <- s2_dt[suppressMessages(st_intersects(
+      st_union(pm$extent), 
+      st_transform(st_as_sfc(s2_dt$footprint, crs = 4326), st_crs2(pm$extent))
+    ))[[1]],]
+  }
   # setorder(s2_dt, -sensing_datetime)
   
   # check which dates whould be ignored for now
@@ -1284,10 +1348,9 @@ sen2r <- function(param_list = NULL,
   s2_lta_dates <- s2_dt[
     ,list(lta = any(lta)),
     by = list(sensing_date = as.Date(sensing_datetime))
-    ] %>% 
-    .[lta==TRUE, sensing_date]
+    ][lta==TRUE, sensing_date]
   s2_list_lta <- s2_dt[lta==TRUE, url] # list of SAFE to be ordered
-  s2_list_ign <- s2_dt[lta==FALSE & as.Date(sensing_datetime) %in% s2_lta_dates, url] # list of SAFE to be ignored
+  s2_list_ign <- s2_dt[lta==FALSE & as.Date(sensing_datetime) %in% s2_lta_dates, url] # list of SAFE to be ignored (to avoid working on a date when only some images of the "needed" ones are available)
   s2_list_l1c <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="1C", url] # list of required L1C
   s2_list_l2a <- s2_dt[lta==FALSE & !as.Date(sensing_datetime) %in% s2_lta_dates & level=="2A", url] # list of required L2A
   names(s2_list_lta) <- s2_dt[lta==TRUE, name]
@@ -1308,7 +1371,6 @@ sen2r <- function(param_list = NULL,
   
   # Add output attribute related to LTA json
   out_attributes[["ltapath"]] <- attr(s2_list_ordered, "path")
-  
   
   # add expected L2A names (after sen2cor)
   if (pm$step_atmcorr %in% c("auto","scihub")) {
@@ -1344,6 +1406,19 @@ sen2r <- function(param_list = NULL,
     s2_list_l2a_exp <- s2_list_l2a
   }
   
+  # IF all images have to be ordered, then exit gracefully
+  if (length(s2_list_lta) == dim(s2_dt)[1]) {
+    status <- sen2r_process_report(
+      s2_list_ordered, 
+      pm = pm,
+      download_only = !pm$preprocess
+    )
+    sen2r_output <- character(0)
+    attr(sen2r_output, "status")  <- status
+    attr(sen2r_output, "ltapath") <- attr(s2_list_ordered, "path")
+    return(invisible(sen2r_output))
+  } 
+  
   # if preprocess is required, define output names
   if (pm$preprocess == TRUE) {
     
@@ -1369,17 +1444,20 @@ sen2r <- function(param_list = NULL,
     
     # Couple L1C and L2A SAFE if both are required for the same products
     if (all(c("l1c", "l2a") %in% pm$s2_levels)) {
-      s2_meta_l2a <- safe_getMetadata(
-        names(s2_list_l2a_exp), 
-        info = c("nameinfo"), format = "data.table"
-      ) %>%
-        .[,list(mission, sensing_datetime, id_orbit, id_tile)] %>%
-        apply(1, paste, collapse = "_")
-      s2_meta_l1c <- safe_getMetadata(
-        names(s2_list_l1c), 
-        info = c("nameinfo"), format = "data.table"
-      ) %>% .[,list(mission, sensing_datetime, id_orbit, id_tile)] %>%
-        apply(1, paste, collapse = "_")
+      s2_meta_l2a <- apply(
+        safe_getMetadata(
+          names(s2_list_l2a_exp), 
+          info = c("nameinfo"), format = "data.table"
+        )[,list(mission, sensing_datetime, id_orbit, id_tile)],
+        1, paste, collapse = "_"
+      )
+      s2_meta_l1c <- apply(
+        safe_getMetadata(
+          names(s2_list_l1c), 
+          info = c("nameinfo"), format = "data.table"
+        )[,list(mission, sensing_datetime, id_orbit, id_tile)],
+        1, paste, collapse = "_"
+      )
       s2_l2a_orphan <- !s2_meta_l2a %in% s2_meta_l1c
       s2_l1c_orphan <- !s2_meta_l1c %in% s2_meta_l2a
       if (any(s2_l2a_orphan, s2_l1c_orphan)) {
@@ -1419,25 +1497,50 @@ sen2r <- function(param_list = NULL,
     # Check if processing is needed
     if (all(unlist(sapply(s2names$new, sapply, length)) == 0)) {
       if (all(unlist(sapply(s2names$exp, sapply, length)) == 0)) {
-        print_message(
-          type = "message",
-          date = TRUE,
-          "No output products matching the settings were found; \nplease ",
-          if (pm$online == FALSE) {"try in online mode, or "},
-          "specify less restrictive settings."
-        )
+        if (length(ignorelist) == 0) {
+          print_message(
+            type = "message",
+            date = TRUE,
+            "No S2 products matching the query settings were found; please ",
+            if (pm$online == FALSE) {"try in online mode, or "},
+            "specify less restrictive settings."
+          )
+        } else {
+          print_message(
+            type = "message",
+            date = TRUE,
+            "All S2 products matching the query settings were ignored because ", 
+            "they are included in the list of files with cloudiness above the ",
+            "\"max_mask\" threshold (", cloudlist_path, "), ",
+            "or in the list of files for which previous processing failed ", 
+            ignorelist_path, 
+            ". (see the \"Details\" section of sen2r() documentation)"  
+          )
+        }
       } else {
         print_message(
           type = "message",
           date = TRUE,
-          "All the required output files already exist; nothing to do.\n",
-          "To reprocess, run sen2r() with the argument overwrite = TRUE,\nor ",
+          "All the required output files for dates not on lta already exist; nothing to do. ",
+          "To reprocess, run sen2r() with the argument overwrite = TRUE, or ",
           if (pm$online == FALSE) {"try running sen2r() in online mode, or "},
           "specify a different output directory."
         )
       }
+      
       sen2r_output <- character(0)
       attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
+      status <- sen2r_process_report(
+        s2_list_ordered, 
+        s2names = s2names,
+        pm, 
+        cloudlist_path  = if (is.character(param_list)) cloudlist_path else character(0), 
+        ignorelist_path = if (is.character(param_list)) ignorelist_path else character(0), 
+        s2_list_cloud_ignored  = if (exists("cloudlist0")) cloudlist0  else NA,
+        s2_list_failed_ignored = if (exists("ignorelist0")) ignorelist0 else NA
+      )
+      
+      attr(sen2r_output, "status") <- status
       return(invisible(sen2r_output))
     }
     
@@ -1455,7 +1558,6 @@ sen2r <- function(param_list = NULL,
   
   ## Generate the list of required SAFE
   if (pm$preprocess==TRUE) {
-    
     # if preprocess is required, only the SAFE necessary to generate new files are considered
     s2_list_l2a_req <- s2_list_l2a[
       names(s2_list_l2a) %in% basename(nn(s2names$req$tiles$L2A))
@@ -1478,6 +1580,9 @@ sen2r <- function(param_list = NULL,
     s2_dt <- s2_dt[name %in% c(names(s2_list_l1c_req),names(s2_list_l2a_req)),]
     s2_list_l1c <- s2_list_l1c_req
     s2_list_l2a <- s2_list_l2a_req
+  } else {
+    # if preprocess is required, only the SAFE necessary to generate new files are considered
+    safe_names_l1c_tocorrect <- names(s2_list_l1c_tocorrect)
   }
   
   # Compute the maximum number of cores to be used
@@ -1678,27 +1783,31 @@ sen2r <- function(param_list = NULL,
           names(sel_s2_list_l2a), info = "version", 
           format = "vector", simplify = TRUE
         ) == "compact")) {
+          
           # if (all(sapply(names(sel_s2_list_l2a), function(x) {
           #   safe_getMetadata(x, "nameinfo")$version
           # }) == "compact")) {
-          # If OVERWRITE == TRUE, use the full list. Otherwise, download only the missing ones
+          # If OVERWRITE == TRUE, use the full list. Otherwise,  download only the missing ones
           if (pm$overwrite_safe) {
-            s2_to_download <- sel_s2_list_l2a
+            s2_to_download_l2a <- sel_s2_list_l2a
           } else {
-            s2_to_download <- sel_s2_list_l2a[!names(sel_s2_list_l2a) %in% list.files(path_l2a, "\\.SAFE$")]
-            s2_to_skip <- names(sel_s2_list_l2a[names(sel_s2_list_l2a) %in% list.files(path_l2a, "\\.SAFE$")])
-            if (length(s2_to_skip) != 0) {
-              message("Images ", paste(s2_to_skip, collapse = ", "),
-                      " are already on your system and will be skipped.",
-                      " Set `overwrite_safe` to TRUE to re-download them")
+            s2_to_download_l2a <- sel_s2_list_l2a[!names(sel_s2_list_l2a) %in% list.files(path_l2a, "\\.SAFE$")]
+            s2_to_skip_l2a <- names(sel_s2_list_l2a[names(sel_s2_list_l2a) %in% list.files(path_l2a, "\\.SAFE$")])
+            if (length(s2_to_skip_l2a) != 0) {
+              print_message(
+                type = "message",
+                "Images ", paste(s2_to_skip_l2a, collapse = ", "),
+                " are already on your system and will be skipped. ",
+                "Set \"overwrite_safe\" to TRUE to re-download them."
+              )
             }
-            if (length(s2_to_download) != 0) {
-              message("No L2A images needed")
+            if (length(s2_to_download_l2a) == 0) {
+              print_message(type = "message", "No L2A images are needed.")
             }
           }
           
-          s2_download(
-            s2_to_download,
+          s2_downloaded_l2a <- s2_download(
+            s2_to_download_l2a,
             outdir = path_l2a,
             downloader = pm$downloader,
             apihub = sel_apihub_path,
@@ -1763,31 +1872,32 @@ sen2r <- function(param_list = NULL,
           
           # If OVERWRITE == TRUE, use the full list. Otherwise, download only the missing ones
           if (pm$overwrite_safe) {
-            s2_to_download <- sel_s2_list_l1c
+            s2_to_download_l1c <- sel_s2_list_l1c
           } else {
-            s2_to_download <- sel_s2_list_l1c[!names(sel_s2_list_l1c) %in% list.files(path_l1c, "\\.SAFE$")]
-            s2_to_skip <- sel_s2_list_l1c[names(sel_s2_list_l1c) %in% list.files(path_l1c, "\\.SAFE$")]
-            if (length(s2_to_skip) != 0) {
+            s2_to_download_l1c <- sel_s2_list_l1c[!names(sel_s2_list_l1c) %in% list.files(path_l1c, "\\.SAFE$")]
+            s2_to_skip_l1c <- sel_s2_list_l1c[names(sel_s2_list_l1c) %in% list.files(path_l1c, "\\.SAFE$")]
+            if (length(s2_to_skip_l1c) != 0) {
               print_message(
                 type = "message",
-                "Images ", paste(names(s2_to_skip), collapse = ", "),
-                " are already on your system and will be skipped.",
-                " Set `overwrite_safe` to TRUE to re-download them."
+                "Images ", paste(names(s2_to_skip_l1c), collapse = ", "),
+                " are already on your system and will be skipped. ",
+                "Set \"overwrite_safe\" to TRUE to re-download them."
               )
             }
             
-            if (length(s2_to_download) == 0) {
-              message("No L1C images needed")
+            if (length(s2_to_download_l1c) == 0) {
+              print_message(type = "message", "No L1C images are needed.")
             }
             
           }
           
-          s2_download(
-            sel_s2_list_l1c[!names(sel_s2_list_l1c) %in% list.files(path_l1c, "\\.SAFE$")],
+          s2_downloaded_l1c <- s2_download(
+            s2_to_download_l1c,
             outdir = path_l1c,
             downloader = pm$downloader,
             overwrite = pm$overwrite_safe
           )
+          
         } else { # otherwise, launch one per tile
           print_message(
             type = "error",
@@ -1871,6 +1981,25 @@ sen2r <- function(param_list = NULL,
         ),
         ]
       
+      if (pm$online == TRUE) {
+        # replace SAFE names changed after download (i.e. updated creation date)
+        sel_s2_dt_id <- sel_s2_dt[
+          ,paste(mission, level, sensing_datetime, id_orbit, id_tile)
+          ]
+        s2_downloaded_id <- c(
+          safe_getMetadata(s2_downloaded_l1c, info = "nameinfo")[
+            ,paste(mission, level, sensing_datetime, id_orbit, id_tile)
+            ],
+          safe_getMetadata(s2_downloaded_l2a, info = "nameinfo")[
+            ,paste(mission, level, sensing_datetime, id_orbit, id_tile)
+            ]
+        )
+        sel_s2_dt[
+          match(s2_downloaded_id, sel_s2_dt_id), 
+          name:=names(c(s2_downloaded_l1c,s2_downloaded_l2a))
+          ]
+      }
+      
       # redefine sel_s2_list_l1c/l2a
       sel_s2_list_l1c <- sel_s2_dt[level=="1C",url] # list of required L1C
       sel_s2_list_l2a <- sel_s2_dt[level=="2A",url] # list of required L2A
@@ -1878,7 +2007,10 @@ sen2r <- function(param_list = NULL,
       names(sel_s2_list_l2a) <- sel_s2_dt[level=="2A",name]
       
       ## Apply sen2cor
-      if (pm$step_atmcorr %in% c("auto","scihub")) {
+      if (all(
+        pm$step_atmcorr %in% c("auto","scihub"),
+        "l2a" %in% pm$s2_levels
+      )) {
         
         sel_s2_list_l1c_tocorrect <- if (pm$overwrite_safe==FALSE) {
           sel_s2_list_l1c[
@@ -1897,11 +2029,11 @@ sen2r <- function(param_list = NULL,
         
         if (length(sel_s2_list_l1c_tocorrect)>0) {
           
-          if (sum(file.path(path_l1c,names(sel_s2_list_l1c_tocorrect)) %>% file.exists()) > 0) {
+          if (sum(file.exists(file.path(path_l1c,names(sel_s2_list_l1c_tocorrect)))) > 0) {
             print_message(
               type = "message",
               date = TRUE,
-              "Starting to correct level-1C SAFE products with sen2cor. ",
+              "Starting to correct level-1C SAFE products with Sen2Cor. ",
               "This operation could take very long time."
             )
           }
@@ -1912,6 +2044,8 @@ sen2r <- function(param_list = NULL,
             outdir = path_l2a,
             tiles = pm$s2tiles_selected,
             parallel = pm$parallel,
+            use_dem = pm$sen2cor_use_dem,
+            gipp = if (all(is.na(pm$sen2cor_gipp))) {list()} else {pm$sen2cor_gipp},
             tmpdir = if (Sys.info()["sysname"] == "Windows") {
               file.path(tmpdir_groupA, "sen2cor")
             } else if (any(attr(mountpoint(tmpdir_groupA), "protocol") %in% c("cifs", "nsfs"))) {
@@ -1937,19 +2071,41 @@ sen2r <- function(param_list = NULL,
       
       # if no processing is required, stop here # TODO see #TODO3 (end of file)
       if (pm$preprocess == FALSE) {
-        
-        print_message(
-          type = "message",
-          date = TRUE,
-          "Execution of sen2r session terminated."
-        )
-        
+        # print_message(
+        #   type ="message",
+        #   date = TRUE, 
+        #   "All images available online were downloaded.\n" 
+        # )
+        # print_message(
+        #   type ="message",
+        #   date = TRUE, 
+        #   "###### Execution of sen2r session terminated ######" 
+        # )
         sen2r_output <- c(file.path(path_l1c,names(sel_s2_list_l1c)),
                           file.path(path_l2a,names(sel_s2_list_l2a)))
+        status <- sen2r_process_report(
+          s2_list_ordered, 
+          download_only = TRUE, 
+          
+          s2_downloaded = c(
+            if (exists("s2_downloaded_l1c")) s2_downloaded_l1c else NA,
+            if (exists("s2_downloaded_l2a")) s2_downloaded_l2a else NA
+          ), 
+          s2_skipped = c(
+            if (exists("s2_to_skip_l1c")) s2_to_skip_l1c else NA,
+            if (exists("s2_to_skip_l2a")) s2_to_skip_l2a else NA
+          ), 
+          s2_corrected = if (all("l1c" %in% pm$s2_levels, length(pm$s2_levels) == 1)) {
+            NA
+          } else {
+            s2_list_l1c_tocorrect
+          }
+        )
+        out_attributes[["status"]] <- status
         attributes(sen2r_output) <- c(attributes(sen2r_output), out_attributes)
         return(invisible(sen2r_output))
-        
-      }
+      } 
+      # else {
       
       
       # update names for output files (after #filter2)
@@ -1966,6 +2122,7 @@ sen2r <- function(param_list = NULL,
       
       # export needed variables
       paths <- attr(sel_s2names, "paths")
+      paths_istemp <- attr(sel_s2names, "paths_istemp")
       
       ### GDAL processing: convert SAFE, merge tiles, warp, mask and compute indices ###
       
@@ -2031,7 +2188,7 @@ sen2r <- function(param_list = NULL,
           print_message(
             type="message",
             "Note: logging messages are not shown during this phase, ",
-            "since it is not possible to send it to standard output.\n",
+            "since it is not possible to send it to standard output. ",
             "To see them, send messages to an external log file ",
             "or use a different processing order (by_date or by_steps)."
           )
@@ -2090,6 +2247,8 @@ sen2r <- function(param_list = NULL,
                   rmtmp = FALSE,
                   prod_type = list_l1c_prods,
                   format = out_format["tiles"],
+                  compress = pm$compression,
+                  bigtiff = bigtiff,
                   tiles = pm$s2tiles_selected,
                   res = pm$res_s2,
                   subdirs = pm$path_subdirs,
@@ -2107,36 +2266,36 @@ sen2r <- function(param_list = NULL,
               
             }
           }
-          if("l2a" %in% pm$s2_levels) {
-            list_l2a_prods <- list_prods[list_prods %in% l2a_prods]
-            for (sel_prod in sel_s2names$req$tiles$L2A) {
-              tiles_l2a_names_out <- c(
-                tiles_l2a_names_out,
-                trace_function(
-                  s2_translate,
-                  infile = sel_prod,
-                  tmpdir = file.path(tmpdir_groupA, "s2_translate_l2a"),
-                  rmtmp = FALSE,
-                  outdir = paths["tiles"],
-                  prod_type = list_l2a_prods,
-                  format = out_format["tiles"],
-                  tiles = pm$s2tiles_selected,
-                  res = pm$res_s2,
-                  subdirs = pm$path_subdirs,
-                  overwrite = pm$overwrite,
-                  trace_files = unlist(sel_s2names$new$tiles)
-                )
+          list_l2a_prods <- list_prods[list_prods %in% l2a_prods]
+          for (sel_prod in sel_s2names$req$tiles$L2A) {
+            tiles_l2a_names_out <- c(
+              tiles_l2a_names_out,
+              trace_function(
+                s2_translate,
+                infile = sel_prod,
+                tmpdir = file.path(tmpdir_groupA, "s2_translate_l2a"),
+                rmtmp = FALSE,
+                outdir = paths["tiles"],
+                prod_type = list_l2a_prods,
+                format = out_format["tiles"],
+                compress = pm$compression,
+                bigtiff = bigtiff,
+                tiles = pm$s2tiles_selected,
+                res = pm$res_s2,
+                subdirs = pm$path_subdirs,
+                overwrite = pm$overwrite,
+                trace_files = unlist(sel_s2names$new$tiles)
               )
-              # tiles_l2a_names_out <- c(
-              #   tiles_l2a_names_out,
-              #   s2_translate(infile = sel_prod,
-              #                outdir = paths["tiles"],
-              #                prod_type = list_l2a_prods,
-              #                format = tiles_outformat,
-              #                res = pm$res_s2,
-              #                subdirs = pm$path_subdirs,
-              #                overwrite = pm$overwrite))
-            }
+            )
+            # tiles_l2a_names_out <- c(
+            #   tiles_l2a_names_out,
+            #   s2_translate(infile = sel_prod,
+            #                outdir = paths["tiles"],
+            #                prod_type = list_l2a_prods,
+            #                format = tiles_outformat,
+            #                res = pm$res_s2,
+            #                subdirs = pm$path_subdirs,
+            #                overwrite = pm$overwrite))
           }
           
           tiles_names_out <- c(if("l1c" %in% pm$s2_levels) {tiles_l1c_names_out},
@@ -2156,6 +2315,7 @@ sen2r <- function(param_list = NULL,
           )
           
           dir.create(paths["merged"], recursive=FALSE, showWarnings=FALSE)
+          
           merged_names_out <- trace_function(
             s2_merge,
             infiles = unlist(sel_s2names$req$merged)[file.exists(unlist(sel_s2names$req$merged))], # TODO add warning when sum(!file.exists(sel_s2names$merged_names_new))>0
@@ -2164,6 +2324,8 @@ sen2r <- function(param_list = NULL,
             tmpdir = file.path(tmpdir_groupA, "s2_merge"),
             rmtmp = FALSE,
             format = out_format["merged"],
+            compress = pm$compression,
+            bigtiff = bigtiff,
             parallel = if (out_format["merged"]=="VRT") {FALSE} else {parallel_steps},
             overwrite = pm$overwrite,
             .log_message = .log_message, .log_output = .log_output,
@@ -2207,10 +2369,11 @@ sen2r <- function(param_list = NULL,
           } else if (anyNA(pm$extent$geometry)) { # FIXME check on telemod tiffs
             NULL
           } else if (pm$extent_as_mask==TRUE) {
-            pm$extent %>% st_combine() # TODO remove this when multiple extents will be allowed
+            st_combine(pm$extent) # TODO remove this when multiple extents will be allowed
           } else {
-            suppressWarnings(st_cast(st_cast(pm$extent,"POLYGON"), "LINESTRING")) %>%
-              st_combine() # TODO remove this when multiple extents will be allowed
+            st_combine(
+              suppressWarnings(st_cast(st_cast(pm$extent,"POLYGON"), "LINESTRING"))
+            ) # TODO remove this when multiple extents will be allowed
           } # TODO add support for multiple extents
           
           if(pm$path_subdirs==TRUE){
@@ -2233,7 +2396,10 @@ sen2r <- function(param_list = NULL,
                   t_srs = if (!is.na(pm$proj)){pm$proj} else {NULL},
                   r = pm$resampling,
                   dstnodata = s2_defNA(sel_prod),
-                  co = if (out_format["warped"]=="GTiff") {paste0("COMPRESS=",pm$compression)},
+                  co = c(
+                    if (out_format["warped"]=="GTiff") {paste0("COMPRESS=",pm$compression)},
+                    if (bigtiff) {"BIGTIFF=YES"}
+                  ),
                   overwrite = pm$overwrite,
                   tmpdir = file.path(tmpdir_groupA, "gdal_warp"),
                   rmtmp = FALSE
@@ -2265,7 +2431,10 @@ sen2r <- function(param_list = NULL,
                   t_srs = if (!is.na(pm$proj)) {pm$proj} else {NULL},
                   r = pm$resampling_scl,
                   dstnodata = s2_defNA("SCL"),
-                  co = if (out_format["warped_scl"]=="GTiff") {paste0("COMPRESS=",pm$compression)},
+                  co = if (out_format["warped_scl"]=="GTiff") {c(
+                    paste0("COMPRESS=",pm$compression),
+                    if (bigtiff) {"BIGTIFF=YES"}
+                  )},
                   overwrite = pm$overwrite,
                   tmpdir = file.path(tmpdir_groupA, "gdal_warp"),
                   rmtmp = FALSE
@@ -2334,6 +2503,7 @@ sen2r <- function(param_list = NULL,
                 rmtmp = FALSE,
                 format = out_format["masked"],
                 compress = pm$compression,
+                bigtiff = bigtiff,
                 subdirs = pm$path_subdirs,
                 overwrite = pm$overwrite,
                 parallel = parallel_steps,
@@ -2373,6 +2543,7 @@ sen2r <- function(param_list = NULL,
               subdirs = pm$path_subdirs,
               format = out_format["rgb"],
               compress = pm$rgb_compression,
+              bigtiff = bigtiff,
               tmpdir = file.path(tmpdir_groupA, "s2_rgb"),
               rmtmp = FALSE,
               parallel = parallel_steps,
@@ -2394,6 +2565,7 @@ sen2r <- function(param_list = NULL,
               subdirs = pm$path_subdirs,
               format = out_format["rgb"],
               compress = pm$rgb_compression,
+              bigtiff = bigtiff,
               tmpdir = file.path(tmpdir_groupA, "s2_rgb"),
               rmtmp = FALSE,
               parallel = parallel_steps,
@@ -2427,6 +2599,7 @@ sen2r <- function(param_list = NULL,
             format = out_format["indices"],
             dataType = pm$index_datatype,
             compress = pm$compression,
+            bigtiff = bigtiff,
             overwrite = pm$overwrite,
             parallel = parallel_steps,
             .log_message = .log_message, .log_output = .log_output,
@@ -2446,7 +2619,7 @@ sen2r <- function(param_list = NULL,
         # build the names of the indices / RGB images not created for the same reason
         if (exists("masked_names_notcreated")) {
           if (length(masked_names_notcreated)>0 & length(unlist(sel_s2names$req$indices))>0) {
-            indices_names_notcreated <- sen2r_getElements(
+            indices_names_notcreated_raw <- sen2r_getElements(
               masked_names_notcreated, format="data.table"
             )[prod_type == pm$index_source,
               paste0("S2",
@@ -2457,16 +2630,23 @@ sen2r <- function(param_list = NULL,
                      if (pm$clip_on_extent) {pm$extent_name},"_",
                      "<index>_",
                      substr(res,1,2),".",
-                     out_ext["masked"])] %>%
-              expand.grid(pm$list_indices) %>%
-              apply(1,function(x){
-                file.path(
-                  if(pm$path_subdirs==TRUE){x[2]}else{""},
-                  gsub("<index>",x[2],x[1])
-                )
-              }) %>%
-              file.path(paths["indices"],.) %>%
-              gsub(paste0(out_ext["merged"],"$"),out_ext["masked"],.)
+                     out_ext["masked"])]
+            indices_names_notcreated <- file.path(
+              paths["indices"], 
+              apply(
+                expand.grid(indices_names_notcreated_raw, pm$list_indices),
+                1, function(x) {
+                  file.path(
+                    if(pm$path_subdirs==TRUE){x[2]}else{""},
+                    gsub("<index>",x[2],x[1])
+                  )
+                }
+              )
+            )
+            indices_names_notcreated <- gsub(
+              paste0(out_ext["merged"],"$"), out_ext["masked"],
+              indices_names_notcreated
+            )
             # rgb_names_notcreated <- sen2r_getElements(
             #   masked_names_notcreated, format="data.table"
             # )[prod_type %in% c("BOA","TOA"),
@@ -2498,9 +2678,10 @@ sen2r <- function(param_list = NULL,
         }
         
         # check file which have been created
-        names_out <- unique(unlist(sel_s2names$new))
-        # exclude temporary files
-        names_out <- names_out[!grepl(tmpdir_groupA, names_out, fixed=TRUE)]
+        names_out <- unique(unlist(
+          # exclude temporary files
+          sel_s2names$new[!paths_istemp[names(sel_s2names$new)]]
+        ))
         names_out_created <- names_out[file.exists(nn(names_out))]
         
         
@@ -2644,10 +2825,11 @@ sen2r <- function(param_list = NULL,
   # value (argument "max_mask"), but also some other unexpected reasons could
   # happen, i.e. because of old name SAFE products which do not include all the tiles.
   # To prevent to try to create these files every time the function is called
-  # with the same parameter file, if param_list is a path, this list is noted
+  # with the same parameter file, if param_list is a path, these lists are saved
   # in two hidden files ( one per file not created because of cloud coverage,
   # one other for all the other reasons) so to ignore them during next executions.
   # To try it again, delete the files or set overwrite = TRUE).
+  
   if (length(names_missing)>0) {
     ignorelist_path <- gsub("\\.json$","_ignorelist.txt",param_list)
     if (is(param_list, "character")) {
@@ -2659,56 +2841,46 @@ sen2r <- function(param_list = NULL,
       paste(names_missing,collapse="\"\n\""),"\"",
       if (is(param_list, "character")) {paste0(
         "\"\nThese files will be skipped during next executions ",
-        "from the current parameter file (\"",param_list,"\").\n",
+        "from the current parameter file (\"",param_list,"\"). ",
         "To try again to build them, remove the file \"",
         ignorelist_path,"\"."
       )}
     )
   }
+  
   if (length(names_cloudcovered)>0) {
     cloudlist_path <- gsub("\\.json$","_cloudlist.txt",param_list)
     if (is(param_list, "character")) {
       write(names_cloudcovered, cloudlist_path, append=TRUE)
     }
-    print_message(
-      type="message",
-      "Some files were not created ",
-      "because the cloud coverage was higher than \"max_mask\":\n\"",
-      paste(names_cloudcovered,collapse="\"\n\""),"\"",
-      if (is(param_list, "character")) {paste0(
-        "\"\nThe list of these files was written in a hidden file ",
-        "(\"",cloudlist_path,"\"), ",
-        "so to be skipped during next executions."
-      )}
-    )
   }
   
-  # Log how to recover S2 ordered products / the current processing
-  if (length(nn(s2_list_ordered)) > 0) {
-    print_message(
-      type = "message",
-      "Some Sentinel-2 images, not available for direct download, ",
-      "were correctly ordered from the Long Term Archive. ",
-      "You can check at a later time if the ordered products were made available ",
-      "using the command:\n",
-      '  safe_is_online("',attr(s2_list_ordered, "path"),'")\n',
-      "In case of available products, the processing chain can be completed ",
-      "re-launching it with the command:\n",
-      '  sen2r("',attr(pm, "outpath"),'")'
-    )
-  }
-  
-  # Exit
-  print_message(
-    type = "message",
-    date = TRUE,
-    "Execution of sen2r session terminated.",
-    if (length(nn(s2_list_ordered)) == 0) {paste0(
-      "\nThe processing chain can be eventually re-launched with the command:\n",
-      '  sen2r("',attr(pm, "outpath"),'")'
-    )}
+  # Issue processing report
+  status <- sen2r_process_report(
+    s2_list_ordered, 
+    s2names, 
+    pm,
+    cloudlist_path  = if (length(names_cloudcovered) > 0) cloudlist_path else character(0), 
+    ignorelist_path = if (length(names_missing) > 0) ignorelist_path else character(0), 
+    s2_list_cloudcovered = if (length(names_cloudcovered) != 0) names_cloudcovered else NA, 
+    s2_list_failed = if (length(names_missing) != 0) names_missing else NA,
+    s2_list_cloud_ignored = if (exists("cloudlist0")) cloudlist0 else NA,
+    s2_list_failed_ignored = if (exists("ignorelist0")) ignorelist0 else NA, 
+    s2_downloaded = c(
+      if (exists("s2_downloaded_l1c")) s2_downloaded_l1c else NA,
+      if (exists("s2_downloaded_l2a")) s2_downloaded_l2a else NA
+    ), 
+    s2_skipped = c(
+      if (exists("s2_to_skip_l1c")) s2_to_skip_l1c else NA,
+      if (exists("s2_to_skip_l2a")) s2_to_skip_l2a else NA
+    ), 
+    s2_corrected = if (all("l1c" %in% pm$s2_levels, length(pm$s2_levels) == 1)) {
+      NA
+    } else {
+      s2_list_l1c_tocorrect
+    }
   )
-  
+  attr(sen2r_output, "status") <- status
   gc()
   
   # Return output file paths

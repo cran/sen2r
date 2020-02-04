@@ -26,9 +26,9 @@
 #'  HTML htmlOutput icon img incProgress isolate NS numericInput observe p
 #'  radioButtons reactive reactiveVal reactiveValues removeModal renderText
 #'  renderUI req runApp selectInput setProgress shinyApp showModal sliderInput
-#'  span stopApp strong tagList textInput uiOutput updateCheckboxGroupInput
-#'  updateDateRangeInput updateNumericInput updateSliderInput updateSelectInput
-#'  updateRadioButtons updateTextInput withMathJax withProgress
+#'  span stopApp strong tagList textInput uiOutput updateCheckboxGroupInput 
+#'  updateCheckboxInput updateDateRangeInput updateNumericInput updateSliderInput
+#'  updateSelectInput updateRadioButtons updateTextInput withMathJax withProgress
 #' @importFrom shinydashboard box dashboardBody dashboardHeader dashboardPage
 #'  dashboardSidebar menuItem sidebarMenu tabItem tabItems
 #' @importFrom shinyFiles getVolumes parseDirPath parseFilePaths parseSavePath
@@ -439,21 +439,40 @@ s2_gui <- function(param_list = NULL,
               title="Atmospheric correction",
               width=12,
               collapsible = TRUE,
-              # step_atmcorr (perform or not sen2cor and how)
-              # uiOutput("step_atmcorr")
-              radioButtons(
-                "step_atmcorr",
-                label = span(
-                  "Method to obtain level-2A corrected images\u2000",
-                  actionLink("help_step_atmcorr", icon("question-circle"))
+              column(
+                width = 7,
+                radioButtons(
+                  "step_atmcorr",
+                  label = span(
+                    "Method to obtain level-2A corrected images\u2000",
+                    actionLink("help_step_atmcorr", icon("question-circle"))
+                  ),
+                  choiceNames = list(
+                    "Use only level-2A images available locally or online",
+                    "Use Sen2Cor only for level-2A products not available locally or online",
+                    "Always correct level-1C images with Sen2Cor locally"
+                  ),
+                  choiceValues = list("l2a","auto", "scihub"),
+                  selected = "auto"
                 ),
-                choiceNames = list(
-                  "Use only level-2A images available locally or online",
-                  "Use Sen2Cor only for level-2A products not available locally or online",
-                  "Always correct level-1C images with Sen2Cor locally"
-                ),
-                choiceValues = list("l2a","auto", "scihub"),
-                selected = "auto")
+              ),
+              column(
+                width = 5,
+                radioButtons(
+                  "use_dem",
+                  label = span(
+                    "Apply a topographic correction?\u2000",
+                    actionLink("help_use_dem", icon("question-circle"))
+                  ),
+                  choices = list(
+                    "Yes" = "TRUE",
+                    "No" = "FALSE",
+                    "Keep default" = "NA"
+                  ),
+                  selected = "NA"
+                )
+              ),
+              
             )) # end of fluidRow/box "sen2cor options"
           )
           
@@ -752,13 +771,14 @@ s2_gui <- function(param_list = NULL,
                 width=4,
                 selectInput("outformat", label = "Output file format",
                             choices = list("GeoTiff" = "GTiff",
+                                           "BigTiff" = "BigTIFF",
                                            "ENVI" = "ENVI"),
                             # TODO add others common formats
                             selected = "GTiff")
               ),
               
               conditionalPanel(
-                condition = "input.outformat == 'GTiff'",
+                condition = "input.outformat == 'GTiff' | input.outformat == 'BigTIFF' ",
                 column(
                   width=3,
                   selectInput("compression", label = "Output compression",
@@ -1068,7 +1088,7 @@ s2_gui <- function(param_list = NULL,
                       ),
                       conditionalPanel(
                         condition = "input.rescale == 'TRUE'",
-                        numericInput("resolution_custom", "Specify resolution (in metres)",
+                        numericInput("resolution_custom", "Specify resolution (m)",
                                      # width="100px",
                                      value = 10,
                                      min = 0)
@@ -1086,10 +1106,18 @@ s2_gui <- function(param_list = NULL,
                     div(style="margin-bottom:-0.25em;", strong("Output projection")),
                     conditionalPanel(
                       condition = "input.use_reference == 'FALSE' || input.reference_usefor.indexOf('proj') < 0",
-                      radioButtons("reproj", label = NULL,
-                                   choices = list("Input projection (do not reproject)" = FALSE,
-                                                  "Custom projection" = TRUE),
-                                   selected = FALSE),
+                      radioButtons(
+                        "reproj", label = NULL,
+                        choiceNames = list(
+                          "Input projection (do not reproject)",
+                          span(
+                            "Custom projection\u2000",
+                            actionLink("help_outprojinput", icon("question-circle"))
+                          )
+                        ),
+                        choiceValues = c(FALSE, TRUE),
+                        selected = FALSE
+                      ),
                       conditionalPanel(
                         condition = "input.reproj == 'TRUE'",
                         textInput("outproj", NULL,
@@ -1342,7 +1370,7 @@ s2_gui <- function(param_list = NULL,
     . <- checked <- NULL
     
     # open a waiting modal dialog
-    modalDialog(
+    showModal(modalDialog(
       div(
         p(
           style = paste0("text-align:center;font-size:500%;color:grey;"),
@@ -1356,8 +1384,7 @@ s2_gui <- function(param_list = NULL,
       size = "s",
       easyClose = FALSE,
       footer = NULL
-    ) %>%
-      shiny::showModal()
+    ))
     
     # link to www directory and objects
     addResourcePath("www", system.file("www", package="sen2r"))
@@ -1655,9 +1682,10 @@ s2_gui <- function(param_list = NULL,
         } else {
           x <- if (is.character(custom_source)) {
             st_read(custom_source, quiet=TRUE)
-          } else {custom_source} %>%
-            st_zm() %>%
-            st_transform(4326)
+          } else {
+            custom_source
+          }
+          x <- st_transform(st_zm(x), 4326)
           names(sf::st_geometry(x)) <- NULL
           attr(x, "valid") <- TRUE
           attr(x, "new") <- TRUE
@@ -1710,28 +1738,29 @@ s2_gui <- function(param_list = NULL,
         # reset and update the map
         react_map(base_map())
         rv$draw_tiles_overlapping_ll <- st_transform(rv$draw_tiles_overlapping, 4326)
-        leafletProxy("view_map") %>%
-          clearShapes() %>%
-          fitBounds(
-            lng1 = min(st_coordinates(rv$draw_tiles_overlapping_ll)[,"X"]),
-            lat1 = min(st_coordinates(rv$draw_tiles_overlapping_ll)[,"Y"]),
-            lng2 = max(st_coordinates(rv$draw_tiles_overlapping_ll)[,"X"]),
-            lat2 = max(st_coordinates(rv$draw_tiles_overlapping_ll)[,"Y"])
-          ) %>%
-          # add extent
-          addPolygons(
-            data = rv$extent,
-            group = "Extent",
-            options = pathOptions(pane = "extent"),
-            # label = ~tile_id,
-            # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
-            fill = TRUE,
-            fillColor = "green",
-            fillOpacity = .3,
-            stroke = TRUE,
-            weight = 3,
-            color = "darkgreen"
-          )
+        clearShapes(leafletProxy("view_map"))
+        fitBounds(
+          leafletProxy("view_map"),
+          lng1 = min(st_coordinates(rv$draw_tiles_overlapping_ll)[,"X"]),
+          lat1 = min(st_coordinates(rv$draw_tiles_overlapping_ll)[,"Y"]),
+          lng2 = max(st_coordinates(rv$draw_tiles_overlapping_ll)[,"X"]),
+          lat2 = max(st_coordinates(rv$draw_tiles_overlapping_ll)[,"Y"])
+        )
+        # add extent
+        addPolygons(
+          leafletProxy("view_map"),
+          data = rv$extent,
+          group = "Extent",
+          options = pathOptions(pane = "extent"),
+          # label = ~tile_id,
+          # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
+          fill = TRUE,
+          fillColor = "green",
+          fillOpacity = .3,
+          stroke = TRUE,
+          weight = 3,
+          color = "darkgreen"
+        )
         
         # update the [un]selected tiles on the map
         rv$update_tiles_on_map <- sample(1E6, 1)
@@ -1742,8 +1771,7 @@ s2_gui <- function(param_list = NULL,
         updatePickerInput(session, "tiles_checkbox", choices = character(0))
         # reset the map
         react_map(base_map())
-        # leafletProxy("view_map") %>%
-        #   clearShapes()
+        # clearShapes(leafletProxy("view_map"))
       }
       
       return(TRUE)
@@ -1753,51 +1781,64 @@ s2_gui <- function(param_list = NULL,
     
     #-- Create the map (once) --#
     base_map <- function() {
-      leaflet() %>%
-        
-        # add tiles
-        addTiles(group = "OpenStreetMap") %>%
-        # addTiles(paste0("https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png",
-        #                 if (!is.na(thunderforest_api)) {paste0("?apikey=",thunderforest_api)}),
-        #          group = "OpenStreetMap Outdoors") %>%
-        # addProviderTiles(providers$OpenTopoMap, group = "OpenTopoMap") %>%
-        addTiles("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-                 group = "OpenTopoMap") %>%
-        # addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
-        addTiles("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-                 group = "CartoDB") %>%
-        # addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
-        addTiles("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                 group = "Satellite") %>%
-        # addProviderTiles(providers$CartoDB.PositronOnlyLabels, group = "Dark names") %>%
-        addTiles("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png",
-                 group = "Satellite") %>%
-        # addProviderTiles(providers$CartoDB.DarkMatterOnlyLabels, group = "Dark names") %>%
-        # addTiles("https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_only_labels/{z}/{x}/{y}.png",
-        #          group = "Dark names") %>%
-        # addTiles(paste0("https://{s}.tile.thunderforest.com/spinal-map/{z}/{x}/{y}.png",
-        #                 if (!is.na(thunderforest_api)) {paste0("?apikey=",thunderforest_api)}),
-        #          group = "Metal or death") %>%
-        
-        # Order group
-        addMapPane("extent", zIndex = 430) %>%
-        addMapPane("tiles_selected", zIndex = 420) %>%
-        addMapPane("tiles_notselected", zIndex = 410) %>%
-        
-        # view and controls
-        addLayersControl(
-          baseGroups = c("OpenStreetMap", "OpenTopoMap", "CartoDB", "Satellite"),
-          options = layersControlOptions(collapsed = TRUE)
-        )
+      m <- leaflet()
+      
+      # add tiles
+      m <- addTiles(m, group = "OpenStreetMap")
+      # m <- addTiles(
+      #   m, paste0(
+      #     "https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png",
+      #     if (!is.na(thunderforest_api)) {paste0("?apikey=",thunderforest_api)}
+      #   ), group = "OpenStreetMap Outdoors"
+      # )
+      # m <- addProviderTiles(m, providers$OpenTopoMap, group = "OpenTopoMap")
+      m <- addTiles(
+        m, "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        group = "OpenTopoMap"
+      )
+      # m <- addProviderTiles(m, providers$CartoDB.Positron, group = "CartoDB")
+      m <- addTiles(
+        m, "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+        group = "CartoDB"
+      )
+      # m <- addProviderTiles(m, providers$Esri.WorldImagery, group = "Satellite")
+      m <- addTiles(
+        m, "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        group = "Satellite"
+      )
+      # m <- addProviderTiles(m, providers$CartoDB.PositronOnlyLabels, group = "Dark names")
+      m <- addTiles(
+        m, "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png",
+        group = "Satellite"
+      )
+      # m <- addProviderTiles(m, providers$CartoDB.DarkMatterOnlyLabels, group = "Dark names")
+      # m <- addTiles(
+      #   m, "https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_only_labels/{z}/{x}/{y}.png",
+      #   group = "Dark names"
+      # )
+      
+      # Order group
+      m <- addMapPane(m, "extent", zIndex = 430)
+      m <- addMapPane(m, "tiles_selected", zIndex = 420)
+      m <- addMapPane(m, "tiles_notselected", zIndex = 410)
+      
+      # view and controls
+      m <- addLayersControl(
+        m,
+        baseGroups = c("OpenStreetMap", "OpenTopoMap", "CartoDB", "Satellite"),
+        options = layersControlOptions(collapsed = TRUE)
+      )
+      m
     }
     react_map <- reactiveVal({
-      base_map() %>%
-        removeLayersControl() %>%
-        addLayersControl(
-          baseGroups = c("OpenStreetMap", "OpenTopoMap", "CartoDB", "Satellite"),
-          overlayGroups = c("S2 tiles","Extent"),
-          options = layersControlOptions(collapsed = TRUE)
-        )
+      basemap <- base_map()
+      removeLayersControl(basemap)
+      addLayersControl(
+        basemap,
+        baseGroups = c("OpenStreetMap", "OpenTopoMap", "CartoDB", "Satellite"),
+        overlayGroups = c("S2 tiles","Extent"),
+        options = layersControlOptions(collapsed = TRUE)
+      )
     })
     output$view_map <- renderLeaflet({react_map()})
     # # renderUI of the leaflet so to update dinamically the width
@@ -1813,27 +1854,34 @@ s2_gui <- function(param_list = NULL,
     
     #- Bbox mode -#
     
-    # message for bboxproj
+    # message for bboxcrs
     output$bboxproj_message <- renderUI({
-      bboxproj_validated <- tryCatch(
+      bboxcrs_validated <- tryCatch(
         st_crs2(input$bboxproj),
         error = function(e) {st_crs(NA)}
-      )$proj4string
+      )
       if (input$bboxproj=="") {
-        rv$bboxproj <- NA
+        rv$bboxcrs <- st_crs(NA)
         ""
-      } else if (is.na(bboxproj_validated)) {
-        rv$bboxproj <- NA
+      } else if (is.na(bboxcrs_validated)) {
+        rv$bboxcrs <- st_crs(NA)
         # span(style="color:red", "\u2718") # ballot
         span(style="color:red",
              "Insert a valid projection (UTM timezone, EPSG code or PROJ4 string).")
       } else {
-        rv$bboxproj <- bboxproj_validated
+        rv$bboxcrs <- bboxcrs_validated
         # span(style="color:darkgreen", "\u2714") # check
-        div(strong("Selected projection:"),
-            br(),
-            projname(bboxproj_validated),
-            style="color:darkgreen")
+        if (projname(bboxcrs_validated) != "unknown") {
+          div(style="color:darkgreen",
+              strong("Selected projection:"), br(),
+              projname(bboxcrs_validated))
+        } else if (!is.na(bboxcrs_validated$epsg)) {
+          div(style="color:darkgreen", 
+              strong("Selected projection:"), br(),
+              paste("EPSG:", bboxcrs_validated$epsg))
+        } else {
+          div(style="color:darkgreen", strong("Valid projection"))
+        }
       }
     })
     
@@ -1850,25 +1898,28 @@ s2_gui <- function(param_list = NULL,
     observeEvent(c(
       input$bbox_xmin, input$bbox_xmax,
       input$bbox_ymin, input$bbox_ymax,
-      rv$bboxproj
+      rv$bboxcrs
     ), {
       
       # Check that the bounding box is valid
       if (!anyNA(c(input$bbox_xmin, input$bbox_xmax,
                    input$bbox_ymin, input$bbox_ymax)) &
-          !(is.null(rv$bboxproj) || is.na(rv$bboxproj))) {
+          !(is.null(rv$bboxcrs) || is.na(rv$bboxcrs))) {
         if (input$bbox_xmin != input$bbox_xmax &
             input$bbox_ymin != input$bbox_ymax) {
           # create the polygon
-          rv$bbox_polygon <- st_as_sfc(
-            st_bbox(
-              c("xmin" = input$bbox_xmin,
-                "ymin" = input$bbox_ymin,
-                "xmax" = input$bbox_xmax,
-                "ymax" = input$bbox_ymax),
-              crs = rv$bboxproj
-            )
-          ) %>% st_transform(4326)
+          rv$bbox_polygon <- st_transform(
+            st_as_sfc(
+              st_bbox(
+                c("xmin" = input$bbox_xmin,
+                  "ymin" = input$bbox_ymin,
+                  "xmax" = input$bbox_xmax,
+                  "ymax" = input$bbox_ymax),
+                crs = rv$bboxcrs
+              )
+            ),
+            4326
+          )
           attr(rv$bbox_polygon, "valid") <- TRUE
         } else {
           rv$bbox_polygon <- st_polygon()
@@ -1882,24 +1933,27 @@ s2_gui <- function(param_list = NULL,
       # if bbox is valid, update the map
       if (attr(rv$bbox_polygon, "valid")) {
         rv$bbox_ll <- st_bbox(st_transform(rv$bbox_polygon, 4326))
-        leafletProxy("view_map_bbox") %>%
-          clearShapes() %>%
-          fitBounds(
-            lng1 = as.numeric(rv$bbox_ll$xmin-(rv$bbox_ll$xmax-rv$bbox_ll$xmin)/3),
-            lat1 = as.numeric(rv$bbox_ll$ymin-(rv$bbox_ll$ymax-rv$bbox_ll$ymin)/3),
-            lng2 = as.numeric(rv$bbox_ll$xmax+(rv$bbox_ll$xmax-rv$bbox_ll$xmin)/3),
-            lat2 = as.numeric(rv$bbox_ll$ymax+(rv$bbox_ll$ymax-rv$bbox_ll$ymin)/3)
-          ) %>%
-          addPolygons(data = rv$bbox_polygon,
-                      group = "Extent",
-                      # label = ~tile_id,
-                      # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
-                      fill = TRUE,
-                      fillColor = "green",
-                      fillOpacity = .3,
-                      stroke = TRUE,
-                      weight = 3,
-                      color = "darkgreen") #%>%
+        clearShapes(leafletProxy("view_map_bbox"))
+        fitBounds(
+          leafletProxy("view_map_bbox"),
+          lng1 = as.numeric(rv$bbox_ll$xmin-(rv$bbox_ll$xmax-rv$bbox_ll$xmin)/3),
+          lat1 = as.numeric(rv$bbox_ll$ymin-(rv$bbox_ll$ymax-rv$bbox_ll$ymin)/3),
+          lng2 = as.numeric(rv$bbox_ll$xmax+(rv$bbox_ll$xmax-rv$bbox_ll$xmin)/3),
+          lat2 = as.numeric(rv$bbox_ll$ymax+(rv$bbox_ll$ymax-rv$bbox_ll$ymin)/3)
+        )
+        addPolygons(
+          leafletProxy("view_map_bbox"),
+          data = rv$bbox_polygon,
+          group = "Extent",
+          # label = ~tile_id,
+          # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
+          fill = TRUE,
+          fillColor = "green",
+          fillOpacity = .3,
+          stroke = TRUE,
+          weight = 3,
+          color = "darkgreen"
+        )
       } else {
         # if bbox is not valid, reset the map
         react_map_bbox(base_map())
@@ -2005,9 +2059,8 @@ s2_gui <- function(param_list = NULL,
       # Check that the vector is valid
       rv$vectfile_polygon <- tryCatch(
         {
-          x <- st_read(rv$vectfile_path, quiet=TRUE) %>%
-            st_zm() %>%
-            st_transform(4326)
+          x <- st_read(rv$vectfile_path, quiet=TRUE)
+          x <-st_transform(st_zm(x), 4326)
           names(sf::st_geometry(x)) <- NULL
           attr(x, "valid") <- TRUE
           attr(x, "new") <- TRUE
@@ -2019,24 +2072,27 @@ s2_gui <- function(param_list = NULL,
       if(attr(rv$vectfile_polygon, "valid")) {
         # if the vector is valid, update the map
         rv$vectfile_polygon_ll <- st_transform(rv$vectfile_polygon, 4326)
-        leafletProxy("view_map_vectfile") %>%
-          clearShapes() %>%
-          fitBounds(
-            lng1 = min(st_coordinates(rv$vectfile_polygon_ll)[,"X"]),
-            lat1 = min(st_coordinates(rv$vectfile_polygon_ll)[,"Y"]),
-            lng2 = max(st_coordinates(rv$vectfile_polygon_ll)[,"X"]),
-            lat2 = max(st_coordinates(rv$vectfile_polygon_ll)[,"Y"])
-          ) %>%
-          addPolygons(data = rv$vectfile_polygon,
-                      group = "Extent",
-                      # label = ~tile_id,
-                      # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
-                      fill = TRUE,
-                      fillColor = "green",
-                      fillOpacity = .3,
-                      stroke = TRUE,
-                      weight = 3,
-                      color = "darkgreen")
+        clearShapes(leafletProxy("view_map_vectfile"))
+        fitBounds(
+          leafletProxy("view_map_vectfile"),
+          lng1 = min(st_coordinates(rv$vectfile_polygon_ll)[,"X"]),
+          lat1 = min(st_coordinates(rv$vectfile_polygon_ll)[,"Y"]),
+          lng2 = max(st_coordinates(rv$vectfile_polygon_ll)[,"X"]),
+          lat2 = max(st_coordinates(rv$vectfile_polygon_ll)[,"Y"])
+        )
+        addPolygons(
+          leafletProxy("view_map_vectfile"),
+          data = rv$vectfile_polygon,
+          group = "Extent",
+          # label = ~tile_id,
+          # labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
+          fill = TRUE,
+          fillColor = "green",
+          fillOpacity = .3,
+          stroke = TRUE,
+          weight = 3,
+          color = "darkgreen"
+        )
       } else {
         # if the vector is not valid, reset the map
         react_map_vectfile(base_map())
@@ -2117,38 +2173,38 @@ s2_gui <- function(param_list = NULL,
       rv$draw_tiles_overlapping$selected <- rv$draw_tiles_overlapping$tile_id %in% input$tiles_checkbox
       # rv$draw_tiles_overlapping$colour <- ifelse(rv$draw_tiles_overlapping$selected | !any(rv$draw_tiles_overlapping$selected), "red", "grey")
       # rv$draw_tiles_overlapping$fillcolour <- ifelse(rv$draw_tiles_overlapping$selected | !any(rv$draw_tiles_overlapping$selected), "orange", "lightgrey")
-      leafletProxy("view_map") %>%
-        removeShape(rv$draw_tiles_overlapping$tile_id) %>%
+      removeShape(leafletProxy("view_map"), rv$draw_tiles_overlapping$tile_id)
+      addPolygons(
+        leafletProxy("view_map"),
+        data = rv$draw_tiles_overlapping[rv$draw_tiles_overlapping$selected | !any(rv$draw_tiles_overlapping$selected),],
+        group = "S2 tiles",
+        options = pathOptions(pane = "tiles_selected"),
+        layerId = ~tile_id,
+        label = ~tile_id,
+        labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
+        fill = TRUE,
+        fillColor = "orange",
+        fillOpacity = .3,
+        stroke = TRUE,
+        weight = 3,
+        color = "red"
+      )
+      if (!all(rv$draw_tiles_overlapping$selected) & any(rv$draw_tiles_overlapping$selected)) {
         addPolygons(
-          data = rv$draw_tiles_overlapping[rv$draw_tiles_overlapping$selected | !any(rv$draw_tiles_overlapping$selected),],
+          leafletProxy("view_map"),
+          data = rv$draw_tiles_overlapping[!rv$draw_tiles_overlapping$selected,],
           group = "S2 tiles",
-          options = pathOptions(pane = "tiles_selected"),
+          options = pathOptions(pane = "tiles_notselected"),
           layerId = ~tile_id,
           label = ~tile_id,
           labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
           fill = TRUE,
-          fillColor = "orange",
+          fillColor = "lightgrey",
           fillOpacity = .3,
           stroke = TRUE,
           weight = 3,
-          color = "red"
+          color = "grey"
         )
-      if (!all(rv$draw_tiles_overlapping$selected) & any(rv$draw_tiles_overlapping$selected)) {
-        leafletProxy("view_map") %>%
-          addPolygons(
-            data = rv$draw_tiles_overlapping[!rv$draw_tiles_overlapping$selected,],
-            group = "S2 tiles",
-            options = pathOptions(pane = "tiles_notselected"),
-            layerId = ~tile_id,
-            label = ~tile_id,
-            labelOptions = labelOptions(noHide = TRUE, direction = "auto"),
-            fill = TRUE,
-            fillColor = "lightgrey",
-            fillOpacity = .3,
-            stroke = TRUE,
-            weight = 3,
-            color = "grey"
-          )
       }
     })
     
@@ -2183,10 +2239,8 @@ s2_gui <- function(param_list = NULL,
       c("n_index","name","longname","s2_formula_mathml","link","checked"),
       all = TRUE
     ))
-    check_mark <- icon("check") %>%
-      span(style="color:darkgreen;", .) %>%
-      as.character() %>%
-      gsub("\n *","",.)
+    check_mark <- span(style="color:darkgreen;", icon("check"))
+    check_mark <- gsub("\n *","", as.character(check_mark))
     indices_db[,extendedname := paste0(
       name,
       " (",longname,")  ",
@@ -2263,19 +2317,19 @@ s2_gui <- function(param_list = NULL,
     ## Reference file
     shinyFileChoose(input, "reference_file_button", roots = volumes)
     
-    reference <- reactive({
-      if (!is.null(input$reference_file_button)) {
-        test_reference <- raster_metadata(input$reference_file_textin, format = "list")[[1]]
-        if (test_reference$isvalid) {test_reference}
-      }
+    observe({
+      req(input$reference_file_textin)
+      test_reference <- raster_metadata(input$reference_file_textin, format = "list")[[1]]
+      rv$reference <- if (test_reference$valid) {test_reference} else {NULL}
     })
     
     observe({
-      path_reference_file <- parseFilePaths(volumes,input$reference_file_button)$datapath %>%
-        as.character()
+      path_reference_file <- as.character(
+        parseFilePaths(volumes,input$reference_file_button)$datapath
+      )
       updateTextInput(session, "reference_file_textin", value = path_reference_file)
       output$reference_file_message <- renderUI({
-        if (!is.null(reference())) {
+        if (!is.null(rv$reference)) {
           span(style="color:darkgreen", "\u2001\u2714") # check
         } else if (!is.null(input$reference_file_button)) {
           span(style="color:red", "\u2001\u2718") # ballot
@@ -2305,12 +2359,12 @@ s2_gui <- function(param_list = NULL,
       if (input$use_reference==TRUE & "res" %in% input$reference_usefor) {
         div(
           style = "padding-top:0.25em;",
-          if (!is.null(reference())) {
+          if (!is.null(rv$reference)) {
             span(style="color:darkgreen",
                  paste0(
-                   paste(reference()$res,
+                   paste(rv$reference$res,
                          collapse="\u2006\u00d7\u2006"), # shortspace times shortspace
-                   switch(reference()$unit,
+                   switch(rv$reference$unit,
                           Degree="\u00b0", # shortspace degree
                           Meter="\u2006m", # shortspace m
                           "")))
@@ -2332,9 +2386,14 @@ s2_gui <- function(param_list = NULL,
         
         div(
           style = "padding-top:0.5em;",
-          if (!is.null(reference())) {
-            span(style="color:darkgreen",
-                 projname(reference()$proj$proj4string))
+          if (!is.null(rv$reference)) {
+            if (projname(rv$reference$proj) != "unknown") {
+              div(style="color:darkgreen", projname(rv$reference$proj))
+            } else if (!is.na(rv$reference$proj$epsg)) {
+              div(style="color:darkgreen", paste("EPSG:", rv$reference$proj$epsg))
+            } else {
+              div(style="color:darkgreen", "Valid")
+            }
           } else {
             span(style="color:grey",
                  "Specify a valid raster file.")
@@ -2344,20 +2403,46 @@ s2_gui <- function(param_list = NULL,
         # else, take the specified one
       } else {
         
-        outproj_validated <- tryCatch(
+        outcrs_validated <- tryCatch(
           st_crs2(input$outproj),
+          warning = function(w) {
+            x <- suppress_warnings(st_crs2(input$outproj), "PROJ >\\= 6")
+            attr(x, "warning") <- w$message
+            x
+          },
           error = function(e) {st_crs(NA)}
-        )$proj4string
+        )
+        # show a warning (once) in case PROJ.4 is used
+        if (all(
+          !is.null(attr(outcrs_validated, "warning")),
+          grepl("PROJ >\\= 6", attr(outcrs_validated, "warning")),
+          is.null(rv$proj_alert_was_already_shown)
+        )) {
+          sendSweetAlert(
+            session, NULL,
+            attr(outcrs_validated, "warning"),
+            type = "warning"
+          )
+          rv$proj_alert_was_already_shown <- TRUE
+        }
+        # Print proj name
         if (input$reproj==FALSE | input$outproj=="") {
           ""
-        } else if (is.na(outproj_validated)) {
+        } else if (is.na(outcrs_validated)) {
           span(style="color:red",
-               "Insert a valid projection (UTM timezone, EPSG code or PROJ4 string).")
+               "Insert a valid projection (UTM timezone, EPSG code or WKT .prj file path).")
         } else {
-          div(strong("Selected projection:"),
-              br(),
-              projname(outproj_validated),
-              style="color:darkgreen")
+          if (projname(outcrs_validated) != "unknown") {
+            div(style="color:darkgreen",
+                strong("Selected projection:"), br(),
+                projname(outcrs_validated))
+          } else if (!is.na(outcrs_validated$epsg)) {
+            div(style="color:darkgreen", 
+                strong("Selected projection:"), br(),
+                paste("EPSG:", outcrs_validated$epsg))
+          } else {
+            div(style="color:darkgreen", strong("Valid projection"))
+          }
         }
         
       }
@@ -2368,9 +2453,9 @@ s2_gui <- function(param_list = NULL,
     # (disabled: not yet possible to do it)
     # output$outformat_message <- renderUI({
     #   if(input$use_reference==TRUE & "outformat" %in% input$reference_usefor) {
-    #     if (!is.null(reference())) {
+    #     if (!is.null(rv$reference)) {
     #       span(style="color:darkgreen",
-    #            reference()$outformat)
+    #            rv$reference$outformat)
     #     } else {
     #       span(style="color:grey",
     #            "Specify a valid raster file.")
@@ -2833,6 +2918,51 @@ s2_gui <- function(param_list = NULL,
       ))
     })
     
+    observeEvent(input$help_use_dem, {
+      showModal(modalDialog(
+        title = "Topographic correction in Sen2Cor",
+        p(HTML(
+          "Sen2Cor can correct the effect of different topographic exposures",
+          "using a Digital Elevation Model (DEM) during atmoshperic correction",
+          "(which is what is done for producing the level 2A SAFE products",
+          "downloadable from ESA Hub).",
+          "By default, Sen2Cor does not perform this operation, causing an",
+          "inhomogeneity between SAFE downloaded from ESA Hub and locally",
+          "produced with Sen2Cor."
+        )),
+        p(HTML(
+          "In this option:<ul>",
+          "<li>set <strong>Yes</strong> to perform the topographic correction:",
+          "DEM is searched in a default directory and downloaded from",
+          "<a href='http://srtm.csi.cgiar.org/' target='_blank'>CGIAR-CSI",
+          "SRTM</a> if not found locally;</li>",
+          "<li>set <strong>No</strong> to avoid applying a topographic",
+          "correction;</li>",
+          "<li>set <strong>Keep default</strong> to mantain the default",
+          "behaviour (which is \"No\", unless the user edited it).</li></ul>"
+        )),
+        p(HTML(
+          "<strong>Note:</strong> Currently the default value is \"Keep",
+          "default\" in order to grant backward compatibility.",
+          "In a future release of sen2r, the default value will be set to TRUE,",
+          "so to grant homogeneity between Level-2A products downloaded from",
+          "ESA Hub and generated using Sen2Cor."
+        )),
+        p(HTML(
+          "To make custom edits to Sen2Cor parameters (e.g. changing the default",
+          "DEM directory, or customising atmospheric correction parameters),",
+          "set the argument <span style='family:monospace;'>\"sen2cor_gipp\"</span> ",
+          "of function <span style='family:monospace;'>sen2r()</span> using the command line",
+          "(refer to the <a href='https://sen2r.ranghetti.info/reference/sen2cor'",
+          "target='_blank'>documentation of function",
+          "<span style='family:monospace;'>sen2cor()</span></a>",
+          "- argument \"gipp\" - for details)."
+        )),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    })
+    
     observeEvent(input$help_time_period, {
       showModal(modalDialog(
         title = "Time period type",
@@ -3164,6 +3294,25 @@ s2_gui <- function(param_list = NULL,
       ))
     })
     
+    observeEvent(input$help_outprojinput, {
+      showModal(modalDialog(
+        title = "Enter a valid projection",
+        size = "s",
+        p(HTML(
+          "To identify the desired output projection,",
+          "please type one of the followings:<ul>",
+          "<li>the EPSG code (e.g. 32632);</li>",
+          "<li>the WKT text representation;</li>",
+          "<li>the path of a spatial file or of a text file containing a WKT",
+          "(e.g. a .proj file of a shapefile);</li>",
+          "<li>the PROJ.4 string (<strong>warning:</strong> this is a",
+          "deprecated representation with PROJ >= 3, so avoid using it!)</li></ul>"
+        )),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    })
+    
     observeEvent(input$info_parallelisation, {
       showModal(modalDialog(
         title = "Processing order and parallelisation",
@@ -3425,6 +3574,8 @@ s2_gui <- function(param_list = NULL,
       rl$rm_safe <- input$rm_safe # "yes" to delete all SAFE, "l1c" to delete only l1c, "no" not to remove
       rl$max_cloud_safe <- input$max_cloud_safe_perc # maximum SAFE cloud coverage (0-100)
       rl$step_atmcorr <- if (safe_req$l2a==TRUE) {input$step_atmcorr} else {"l2a"} # download_method in sen2cor: "auto", "l2a" or "scihub"
+      rl$sen2cor_use_dem <- as.logical(input$use_dem) # apply topographic correction
+      rl$sen2cor_gipp <- param_list$sen2cor_gipp # do not modify (GUI not yet implemented)
       # rl$steps_reqout <- input$steps_reqout # vector of required outputs: "safe", "tiles", "clipped" (one or more)
       
       # spatio-temporal selection #
@@ -3441,9 +3592,10 @@ s2_gui <- function(param_list = NULL,
       
       # polygons
       rl$extent <- if (input$query_space == TRUE & !is.null(rv$extent)) {
-        rv$extent %>%
-          st_transform(4326) %>%
-          geojson_json(pretty=TRUE)
+        geojson_json(
+          st_transform(rv$extent, 4326),
+          pretty = TRUE
+        )
       } else {
         NA
       }
@@ -3491,7 +3643,7 @@ s2_gui <- function(param_list = NULL,
       # spatial resolution for output products (2-length numeric vector)
       rl$res <- if (input$use_reference==TRUE &
                     "res" %in% input$reference_usefor) {
-        reference()$res
+        rv$reference$res
       } else {
         if (input$rescale == FALSE) {
           NA
@@ -3508,19 +3660,19 @@ s2_gui <- function(param_list = NULL,
       # unit of measure ("Meter" or "Degree")
       rl$unit <- ifelse(input$use_reference==TRUE &
                           "res" %in% input$reference_usefor,
-                        reference()$unit,
+                        rv$reference$unit,
                         "Meter") # TODO allow degrees if outproj is longlat
-      # output proj4string
+      # output WKT/WKT2
       rl$proj <- if (input$use_reference==TRUE &
                      "proj" %in% input$reference_usefor) {
-        reference()$proj$proj4string
+        st_as_text_2(rv$reference$proj)
       } else if (input$reproj==FALSE) {
         NA
       } else {
         tryCatch(
-          st_crs2(input$outproj),
-          error = function(e) {st_crs(NA)}
-        )$proj4string
+          st_as_text_2(input$outproj),
+          error = function(e) {NA}
+        )
       }
       # resampling methods ("nearest","bilinear","cubic","cubicspline","lanczos","average","mode")
       rl$resampling <- input$resampling
@@ -3528,12 +3680,12 @@ s2_gui <- function(param_list = NULL,
       # output format (GDAL format name)
       rl$outformat <- ifelse(input$use_reference==TRUE &
                                "outformat" %in% input$reference_usefor,
-                             reference()$outformat,
+                             rv$reference$outformat,
                              input$outformat)
       rl$rgb_outformat <- rl$outformat # TODO add a widget to set it
       rl$index_datatype <- input$index_datatype
       # output compression ("LZW", "DEFLATE" etc.)
-      rl$compression <- ifelse(rl$outformat=="GTiff",
+      rl$compression <- ifelse(rl$outformat %in% c("GTiff","BigTIFF"),
                                input$compression,
                                NA)
       rl$rgb_compression <- rl$compression # TODO add a widget to set it
@@ -3560,7 +3712,7 @@ s2_gui <- function(param_list = NULL,
       if (!is.null(NULL) & !anyNA(NULL)) {rl$apihub_path <- rv$apihub_path}
       
       # information about package version
-      rl$pkg_version <- packageVersion("sen2r") %>% as.character()
+      rl$pkg_version <- as.character(packageVersion("sen2r"))
       
       return(rl)
     }
@@ -3576,7 +3728,7 @@ s2_gui <- function(param_list = NULL,
         updateCheckboxGroupInput(session, "list_levels", selected = pl$s2_levels)
         updateCheckboxGroupInput(session, "sel_sensor", selected = pl$sel_sensor)
         updateRadioButtons(session, "online", selected = pl$online)
-        updateRadioButtons(session, "make_lta_order", selected = pl$order_lta)
+        updateCheckboxInput(session, "make_lta_order", value = pl$order_lta)
         updateRadioButtons(session, "downloader", selected = pl$downloader)
         updateRadioButtons(session, "overwrite_safe", selected = pl$overwrite_safe)
         updateRadioButtons(session, "rm_safe", selected = pl$rm_safe)
@@ -3585,6 +3737,11 @@ s2_gui <- function(param_list = NULL,
           value = if (!all(is.na(nn(pl$max_cloud_safe)))) {pl$max_cloud_safe} else {100}
         )
         updateRadioButtons(session, "step_atmcorr", selected = pl$step_atmcorr)
+        updateRadioButtons(
+          session, "use_dem", selected = if (
+            is.na(pl$sen2cor_use_dem)
+          ) {"NA"} else {as.character(pl$sen2cor_use_dem)}
+        )
         setProgress(0.2)
         
         # spatio-temporal selection
@@ -3679,17 +3836,23 @@ s2_gui <- function(param_list = NULL,
               TRUE
             }
           })
-          updateTextInput(session, "outproj", value = ifelse(!is.na(pl$proj),
-                                                             pl$proj,
-                                                             character(0)))
+          updateTextInput(
+            session, "outproj", 
+            value = ifelse(!is.na(pl$proj), pl$proj, character(0))
+          )
           updateRadioButtons(session, "outformat", selected = pl$outformat)
         }
         updateRadioButtons(session, "index_datatype", selected = pl$index_datatype)
         updateRadioButtons(session, "resampling", selected = pl$resampling)
         updateRadioButtons(session, "resampling_scl", selected = pl$resampling_scl)
-        updateRadioButtons(session, "compression", selected = ifelse(pl$outformat=="GTiff",
-                                                                     pl$compression,
-                                                                     character(0)))
+        updateRadioButtons(
+          session, "compression", 
+          selected = ifelse(
+            pl$outformat %in% c("GTiff","BigTIFF"), 
+            pl$compression, 
+            character(0)
+          )
+        )
         updateRadioButtons(session, "overwrite", selected = pl$overwrite)
         setProgress(0.8)
         
@@ -3895,12 +4058,10 @@ s2_gui <- function(param_list = NULL,
       # server-side button
       import_param_path <- parseFilePaths(volumes,input$import_param)
       rv$imported_param <- if (nrow(import_param_path)>0) {
-        import_param_path$datapath %>%
-          as.character() %>%
-          readLines() %>%
-          fromJSON() %>%
-          check_param_list(type = "error", correct = TRUE)
-        
+        check_param_list(
+          fromJSON(readLines(as.character(import_param_path$datapath))),
+          type = "warning", correct = TRUE
+        )
       } else {
         NULL
       }
@@ -3917,33 +4078,33 @@ s2_gui <- function(param_list = NULL,
         rv$imported_param <- NULL
       }
     })
-    
-    # disable log button if logging was already doing
-    if (all(!is.na(param_list$log))) {
-      disable("save_log")
-    }
-    
-    # if Create log is pressed, set the paramtere to sink the log
-    observeEvent(input$save_log, {
-      shinyFileSave(input, "save_log", roots=volumes, session=session)
-      rv$log_path <- parseSavePath(volumes, input$save_log)$datapath
-    })
-    
-    observeEvent(param_list, {
-      req(param_list)
-      import_param_list(param_list)
-    })
-    
-    ## end of path module ##
-    
-    # Closing the connection when window is closed
-    session$onSessionEnded(function() {
-      stopApp()
-    })
-    
-    # Remove waiting modal dialog
-    removeModal()
-    
+        
+        # disable log button if logging was already doing
+        if (all(!is.na(param_list$log))) {
+          disable("save_log")
+        }
+        
+        # if Create log is pressed, set the paramtere to sink the log
+        observeEvent(input$save_log, {
+          shinyFileSave(input, "save_log", roots=volumes, session=session)
+          rv$log_path <- parseSavePath(volumes, input$save_log)$datapath
+        })
+        
+        observeEvent(param_list, {
+          req(param_list)
+          import_param_list(param_list)
+        })
+        
+        ## end of path module ##
+        
+        # Closing the connection when window is closed
+        session$onSessionEnded(function() {
+          stopApp()
+        })
+        
+        # Remove waiting modal dialog
+        removeModal()
+        
   } # end of s2_gui.server function
   
   

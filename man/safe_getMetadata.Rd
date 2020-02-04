@@ -6,8 +6,14 @@
 \alias{safe_isvalid}
 \title{Get information from S2 file name or metadata}
 \usage{
-safe_getMetadata(s2, info = "all", format = "default",
-  simplify = TRUE, abort = TRUE, allow_oldnames = FALSE)
+safe_getMetadata(
+  s2,
+  info = "all",
+  format = "default",
+  simplify = TRUE,
+  abort = TRUE,
+  allow_oldnames = FALSE
+)
 
 rm_invalid_safe(s2, allow_oldnames = FALSE)
 
@@ -40,12 +46,12 @@ followings):
 \item \code{"validname"} (TRUE or FALSE);
 \item \code{"exists"} (TRUE or FALSE);
 \item \code{"prod_type"} ('singlegranule' or 'product');
-\item \code{"version"} ('old' or 'compact');
+\item \code{"version"} (\code{'old'} or \code{'compact'});
 \item \code{"tiles"} (vector with the tiles ID available in the product);
 \item \code{"utm"} (vector with the UTM zones used in the product);
 \item \code{"xml_main"} (name of the main XML file with metadata);
 \item \code{"xml_granules"} (names of the XML with granule metadata);
-\item \code{"level"} ('1C' or '2A');
+\item \code{"level"} (\code{'1C'} or \code{'2A'});
 \item \code{"creation_datetime"}, \code{"id_tile"}, \code{"mission"}, \code{"centre"},
 \code{"file_class"}, \code{"id_orbit"}, \code{"orbit_number"},
 \code{"sensing_datetime"}, \code{"id_baseline"}: metadata specific of
@@ -148,7 +154,7 @@ safe_isvalid("invalid_safe_name.SAFE", check_file = FALSE)
 \dontrun{
 # Download a sample SAFE archive (this can take a while)
 s2_exampleurl <- paste0("https://scihub.copernicus.eu/apihub/odata/v1/",
-  "Products(\\'5f590bcb-ee55-4a20-8e75-bde99f5b93d4\\')/$value")
+  "Products(\'5f590bcb-ee55-4a20-8e75-bde99f5b93d4\')/$value")
 names(s2_exampleurl) <- "S2A_MSIL1C_20170703T101021_N0205_R022_T32TNS_20170703T101041.SAFE"
 s2_download(s2_exampleurl, outdir=tempdir())
 s2_examplepath <- file.path(tempdir(), names(s2_exampleurl))

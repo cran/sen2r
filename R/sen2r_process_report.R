@@ -117,7 +117,10 @@ sen2r_process_report <- function(
       tbl_failed_ignored <- 0
     }
     
-    if (length(tbl_cld_ignored) != 0 | length(tbl_failed_ignored) != 0) {
+    if (all(
+      length(tbl_cld_ignored) != 0 | length(tbl_failed_ignored) != 0,
+      !is.null(s2names)
+    )) {
       exp_new_files <- s2names$exp[!attr(s2names, "paths_istemp")[names(s2names$exp)]]
       
       dates_expected <- as.Date(substr(basename(
@@ -407,7 +410,7 @@ sen2r_process_report <- function(
   print_message(
     type = "message",
     date = TRUE,
-    "####\u00A0 Execution of sen2r session terminated. \u00A0####"
+    "#### sen2r session terminated. ####"
   )
   
   if (length(nn(s2_list_ordered)) == 0) {

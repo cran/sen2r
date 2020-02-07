@@ -257,14 +257,9 @@ installed and used.</li>
 <p>To install both package dependencies and runtime binaries (excepting <strong>sen2cor</strong>, which is installed by <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>):</p>
 
 <ul>
-<li><p>On Debian and Ubuntu:</p>
+<li><p>On Ubuntu:</p>
 
 <pre><code class="bash">sudo apt-get install -y r-base gdal-bin python-gdal aria2 libpython-dev libudunits2-dev libgdal-dev libjq-dev libprotobuf-dev protobuf-compiler libv8-dev libssl-dev libcairo2-dev
-</code></pre>
-
-<p>On Debian, <code>proj-epsg</code> is also required:</p>
-
-<pre><code class="bash">sudo apt-get install -y proj-epsg
 </code></pre>
 
 <p>On Ubuntu 16.04 LTS Xenial and 14.04 LTS Trusty, the repositories <a href="https://launchpad.net/%7Eubuntugis">ubuntugis</a> and <a href="https://launchpad.net/%7Eopencpu">opencpu</a> must be added before installing the packages:</p>
@@ -274,7 +269,13 @@ sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
 sudo apt-get update -q
 </code></pre>
 
-<p>Installation was tested over Debian 9 Stretch and Ubuntu 18.04 LTS Bionic; newer versions (Ubuntu &gt; 18.04, Debian &gt; 9) should work, like Ubuntu 16.04 LTS Xenial and 14.04 LTS Trusty should also do. Other releases (Debian &#8804; 8; Ubuntu non-LTS &lt; 18.04; Ubuntu LTS &#8804; 12.04) are not supported.</p></li>
+<p>Installation was tested over Ubuntu 18.04 LTS Bionic; newer versions should work, like Ubuntu 16.04 LTS Xenial and 14.04 LTS Trusty should also do. Other releases (Ubuntu non-LTS &lt; 18.04; Ubuntu LTS &#8804; 12.04) are not supported.</p></li>
+<li><p>On Debian:</p>
+
+<pre><code class="bash">sudo apt-get install -y r-base gdal-bin python-gdal aria2 libpython-dev libudunits2-dev libgdal-dev libjq-dev libprotobuf-dev protobuf-compiler libnode-dev libssl-dev libcairo2-dev proj-epsg
+</code></pre>
+
+<p>Installation was tested over Debian 9 Stretch; older releases are not supported.</p></li>
 <li><p>On Fedora:</p>
 
 <pre><code class="bash">sudo yum install R gdal gdal-python aria2 python-devels gdal-devel proj-devel geos-devel udunits2-devel jq-devel protobuf-devel v8-devel openssl-devel cairo-devel libcurl-devel netcdf-devel libxml2-devel

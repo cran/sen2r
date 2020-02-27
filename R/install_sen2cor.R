@@ -13,7 +13,7 @@
 #' @note License: GPL 3.0
 #' @importFrom jsonlite toJSON fromJSON
 #' @importFrom utils download.file unzip
-#' @importFrom httr GET write_disk
+#' @importFrom httr RETRY write_disk progress
 #' @export
 #' @examples
 #' \dontrun{
@@ -122,7 +122,22 @@ install_sen2cor <- function(
   sen2cor_installer <- file.path(sen2cor_dir, basename(sen2cor_url))
   
   # download, extract and delete archive
-  GET(sen2cor_url, write_disk(sen2cor_installer, overwrite=TRUE))
+  out_bar <- if (inherits(stdout(), "terminal")) {
+    NULL
+  } else {
+    file(out_bar_path <- tempfile(), open = "a")
+  }
+  RETRY(
+    verb = "GET",
+    url = sen2cor_url,
+    times = 5, pause_cap = 8,
+    progress(con = if (length(out_bar) > 0) {out_bar} else {stdout()}),
+    write_disk(sen2cor_installer, overwrite = TRUE)
+  )
+  if (length(out_bar) > 0) {
+    close(out_bar)
+    invisible(file.remove(out_bar_path))
+  }
   # download.file(sen2cor_url, destfile = sen2cor_installer)
   if (Sys.info()["sysname"] %in% c("Linux","Darwin")) {
     curr_dir <- getwd()
@@ -191,8 +206,8 @@ install_sen2cor <- function(
 .sen2cor_exists <- function(sen2cor_dir) {
   # Check if Sen2Cor exists in the provided directory
   file.exists(file.path(
-    sen2cor_dir, "bin",
-    if (Sys.info()["sysname"] == "Windows") {"L2A_Process.bat"} else {"L2A_Process"}
+    sen2cor_dir,
+    if (Sys.info()["sysname"] == "Windows") {"L2A_Process.bat"} else {"bin/L2A_Process"}
   ))
 }
 
@@ -211,8 +226,8 @@ link_sen2cor <- function(sen2cor_dir) {
   
   binpaths <- load_binpaths()
   binpaths$sen2cor <- normalize_path(file.path(
-    sen2cor_dir, "bin",
-    if (Sys.info()["sysname"] == "Windows") {"L2A_Process.bat"} else {"L2A_Process"}
+    sen2cor_dir,
+    if (Sys.info()["sysname"] == "Windows") {"L2A_Process.bat"} else {"bin/L2A_Process"}
   ))
   writeLines(toJSON(binpaths, pretty=TRUE), attr(binpaths, "path"))
   # get Sen2Cor version

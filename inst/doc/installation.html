@@ -339,7 +339,7 @@ install_github(&quot;ranghetti/sen2r&quot;)
 <p>This will install the R package along with its package dependencies,
 containing all the functions necessary to preprocess data.</p>
 
-<p>Finally, <strong>sen2cor</strong> can be installed from R:</p>
+<p>Finally, <strong>Sen2Cor</strong> can be installed from R:</p>
 
 <pre><code class="r">library(sen2r)
 install_sen2cor()
@@ -416,6 +416,14 @@ check_sen2r_deps()
 
 <p>This function opens a GUI which help to check that they are satisfied;
 if some of them are missing, the GUI allows to install them directly.</p>
+
+<p>Alternatively, they can be installed individually from the command line with the
+three following functions (see their respective references for further details):</p>
+
+<pre><code class="r">check_gdal()
+install_sen2cor()
+install_aria2()
+</code></pre>
 
 <!-- Atmospheric correction is performed using [sen2cor](http://step.esa.int/main/third-party-plugins-2/sen2cor):
 the package will automatically download and install it at first use,
@@ -528,6 +536,14 @@ check_sen2r_deps()
 
 <p>This function opens a GUI which help to check that they are satisfied;
 if some of them are missing, the GUI allows to install them directly.</p>
+
+<p>Alternatively, they can be installed individually from the command line with the
+three following functions (see their respective references for further details):</p>
+
+<pre><code class="r">check_gdal()
+install_sen2cor()
+install_aria2()
+</code></pre>
 
 </body>
 

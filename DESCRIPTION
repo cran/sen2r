@@ -1,7 +1,7 @@
 Package: sen2r
 Type: Package
 Title: Find, Download and Process Sentinel-2 Data
-Version: 1.3.2
+Version: 1.3.3
 Authors@R: c(person("Luigi", "Ranghetti",
                     email = "luigi@ranghetti.info",
                     role = c("aut", "cre"),
@@ -24,7 +24,7 @@ Depends: R (>= 3.5.0)
 Imports: methods, sf, stars, data.table, raster, XML, jsonlite,
         geojsonio, leaflet, leaflet.extras, mapedit, shiny, shinyFiles,
         shinydashboard, shinyjs, shinyWidgets, foreach, parallel,
-        doParallel, httr
+        doParallel, httr, RcppTOML
 Suggests: rgdal, spelling, geojsonlint, httptest, knitr, rmarkdown,
         sys, tools, units, testthat (>= 2.1.0)
 SystemRequirements: GDAL (>= 2.1.2), PROJ (>= 4.9.1), GEOS (>= 3.4.2),
@@ -34,9 +34,9 @@ VignetteBuilder: knitr
 RoxygenNote: 7.0.2
 Language: en-GB
 NeedsCompilation: no
-Packaged: 2020-02-27 07:07:29 UTC; lranghetti
+Packaged: 2020-03-30 14:52:32 UTC; lranghetti
 Author: Luigi Ranghetti [aut, cre] (<https://orcid.org/0000-0001-6207-5188>),
   Lorenzo Busetto [aut] (<https://orcid.org/0000-0001-9634-6038>)
 Maintainer: Luigi Ranghetti <luigi@ranghetti.info>
 Repository: CRAN
-Date/Publication: 2020-02-27 15:00:19 UTC
+Date/Publication: 2020-03-30 15:30:02 UTC

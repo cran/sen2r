@@ -1,6 +1,9 @@
 ## ----setup, include=FALSE-----------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 
+## ---- eval = FALSE------------------------------------------------------------
+#  list_indices("s2_formula", "^NDVI$")
+
 ## ---- eval=FALSE--------------------------------------------------------------
 #  json_path <- build_example_param_file()
 #  out_dir_1 <- tempfile(pattern = "sen2r_out_1_")

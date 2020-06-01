@@ -91,6 +91,11 @@
 #'  (being corrected or already existing).
 #'
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
+#' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
+#'  "sen2r": An R toolbox for automatically downloading and preprocessing 
+#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. DOI: 
+#'  \href{https://doi.org/10.1016/j.cageo.2020.104473}{10.1016/j.cageo.2020.104473}, 
+#'  URL: \url{http://sen2r.ranghetti.info/}.
 #' @note License: GPL 3.0
 #' @importFrom jsonlite fromJSON
 #' @importFrom doParallel registerDoParallel
@@ -243,14 +248,17 @@ sen2cor <- function(
     } # nocov end
     
     # set paths
-    sel_l1c <- normalize_path(l1c_prodlist[i])
-    sel_l2a <- normalize_path(file.path(
-      if (is.null(outdir)) {dirname(sel_l1c)} else {outdir},
+    sel_l1c <- file.path(
+      normalize_path(dirname(l1c_prodlist[i])), 
+      basename(normalizePath(l1c_prodlist[i]))
+    )
+    sel_l2a <- file.path(
+      if (is.null(outdir)) {dirname(sel_l1c)} else {normalize_path(outdir)},
       gsub(
         "_MSIL1C\\_", "_MSIL2A_",
         gsub("_OPER_", "_USER_", basename(sel_l1c))
       )
-    ), mustWork = FALSE) # path of the L2A product where it should be placed definitively
+    ) # path of the L2A product where it should be placed definitively
     
     # Check if a "comparable" file already excists
     # (in case using Sen2cor 2.8.0, this is necessary in order not to 

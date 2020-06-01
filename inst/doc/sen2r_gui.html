@@ -210,6 +210,15 @@ These commands will open the GUI provided with by function <code>sen2r()</code>:
 sen2r()
 </code></pre>
 
+<p>Note that the following error message could be returned:</p>
+
+<pre><code>Some missing packages are needed to run the GUI; please install them with the command
+&gt; install.packages(&quot;leaflet&quot;, &quot;leafpm&quot;, &quot;mapedit&quot;, &quot;shiny&quot;, &quot;shinyFiles&quot;, &quot;shinydashboard&quot;, &quot;shinyjs&quot;, &quot;shinyWidgets&quot;)
+</code></pre>
+
+<p>This because &ldquo;graphical&rdquo; packages required to run the GUI are now suggested dependencies (the package could be used without them, if the user do not require the GUI).
+In this case, simply install the missing packages as stated by the error message (which could differ from the previous one).</p>
+
 <p>The GUI is organised in several panels (click on the images below for larger versions), 
 allowing users to set all the required processing parameters.
 Help pop-up windows (marked with the symbol

@@ -60,8 +60,3 @@ knitr::opts_chunk$set(echo = TRUE)
 #  library(sen2r)
 #  check_sen2r_deps()
 
-## ---- eval = FALSE------------------------------------------------------------
-#  check_gdal()
-#  install_sen2cor()
-#  install_aria2()
-

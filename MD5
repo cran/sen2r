@@ -1,6 +1,6 @@
-62d6028a2af5902dae1d8b3ad57ad03c *DESCRIPTION
+59b65c9fd6b8a97da441e752479a984e *DESCRIPTION
 0984bd39e4d2fb6775cd5b3307bf250a *NAMESPACE
-2910dedf65b054653056cebef28aaf18 *NEWS.md
+e817841c2eed3ccaefc40f16ed6c7094 *NEWS.md
 7d8dac2c244cd16670f399c8d2caa786 *R/abs2rel.R
 ee4fe9d393262d771bad3242c10bf89c *R/add_rgb_image.R
 fece779181b78076874106b3d413fd43 *R/build_example_param_file.R
@@ -8,7 +8,7 @@ fece779181b78076874106b3d413fd43 *R/build_example_param_file.R
 fceaf6bdb62a8e5d08a89b84b4e15f41 *R/check_gdal.R
 e6a8179167306317a207162a1ced41dc *R/check_gui_deps.R
 409f387a573e279dff6665612f1cc1a5 *R/check_param_list.R
-f92f2e6f6e568cea0f6b0455b253134a *R/check_sen2r_deps.R
+7152ca5dc7d8e418762412063bc9e847 *R/check_sen2r_deps.R
 ccff75fca28f8ca2cbe09f1694adda26 *R/compute_s2_paths.R
 bf7a3d0ecab824fcb64ce7ecd31f1f98 *R/comsub.R
 b7c649bff16fcc86ed748bd0231c2997 *R/convert_datatype.R
@@ -26,7 +26,7 @@ acd39b6c094a534fbe873525bab13df4 *R/gdalwarp_grid.R
 2cda78e0a18f5602e336a5699bafc4dc *R/give_write_permission.R
 b1449b500d27bfbfa3892e307296b8e9 *R/helpers_extent.R
 8aca5d4fb4070ad5cc529087e1a0e2be *R/ignorelist.R
-90bae2f6c9dc3056d670967b1c36293d *R/init_python.R
+5c24639ccee2bb8ce5ede92acfa3b40b *R/init_python.R
 7c85feac731bd6a899cdacb42ccfccef *R/install_aria2.R
 22d80e33628431f0f918fe79104cdf3c *R/install_sen2cor.R
 680a5e1dee0735b1ec49ec34ab9ea075 *R/list_indices.R
@@ -70,7 +70,7 @@ e09728b3a6ba4d8554ed8346e0b0a1e4 *R/trace_functions.R
 5fabf75791e077874e325faa6d04c972 *R/zzz.R
 3eac70a3bd7d0df1d85b7bd4951cd7fa *build/vignette.rds
 2de2c53e6c008763ed3930048763cf9d *inst/CITATION
-7077a69c50329dd714a751f81640995d *inst/WORDLIST
+d46ea0118a064136272459b00d192cc3 *inst/WORDLIST
 cdd82bfe49c68e3448399fd8cef67ca8 *inst/doc/docker.R
 2bfc5e6fda8a5858e143fb2a27cf2db9 *inst/doc/docker.Rmd
 69f3c2d9ef430863dc272aa64838d805 *inst/doc/docker.html
@@ -206,7 +206,7 @@ b9ac633a5fad95967879021e1ed79e7d *tests/testthat.R
 60336a3da2808b6bcaf240eeed3f8f27 *tests/testthat/test-gdal_warp.R
 4c4279273d9e5c3170b20ebe6f17f32a *tests/testthat/test-gdalwarp_grid.R
 ca12eec893d881a2990ace569b9170a7 *tests/testthat/test-list_indices.R
-38f349f3b5fcd942a5a5955b67f8c238 *tests/testthat/test-load_binpaths.R
+9468dbae6c43be3b197b59a4a8f2054a *tests/testthat/test-load_binpaths.R
 e9f3e014fee3312aa09587aaade8d46d *tests/testthat/test-mountpoint.R
 e027eaaa6107d484579d2b9da8dd59b4 *tests/testthat/test-projpar.R
 c202c0e81bd91c53372e7c7119b7ac9a *tests/testthat/test-s2_calcindices.R

@@ -1,5 +1,4 @@
 context("Test compute spectral indices - s2_calcindices()")
-ref_dir <- system.file("extdata/out", package = "sen2r")
 
 outdir_12 <- tempfile(pattern = "out_test12_")
 testthat::test_that(
@@ -114,7 +113,7 @@ context("Test compute spectral indices - s2_calcindices(), GDAL method")
 testthat::skip_on_cran() # because using runtime GDAL
 # testthat::skip_on_travis()
 testthat::test_that(
-  "Tests on indices computation with function s2_calcidices(), gdal method", {
+  "Tests on indices computation with function s2_calcindices(), gdal method", {
     
     outdir_15 <- tempfile(pattern = "out_test15_")
     dir.create(outdir_15, showWarnings = FALSE)

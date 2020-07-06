@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
-<title><i class="fa fa-linux" aria-hidden="true"></i> On Linux systems</title>
+<title>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></title>
 
 <script type="text/javascript">
 window.onload = function() {
@@ -201,6 +201,8 @@ hr {
 </head>
 
 <body>
+<h2>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></h2>
+
 <p>Instruction are provided separately for each OS:</p>
 
 <ul>
@@ -211,9 +213,9 @@ hr {
 
 <p>Alternatively, <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span> can be used <a href="docker.html">in a Docker container</a>.</p>
 
-<h2><i class="fa fa-linux" aria-hidden="true"></i> On Linux systems</h2>
+<h3><i class="fa fa-linux" aria-hidden="true"></i> On Linux systems</h3>
 
-<h3>Installing dependencies</h3>
+<h4>Installing dependencies</h4>
 
 <p>Before installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>, it is recommended to check <a href="https://cran.r-project.org/bin/linux">R</a> (v. 3.4.4 or higher) and the following libraries to be present:</p>
 
@@ -306,7 +308,7 @@ cd udunits; makepkg -si --noconfirm
 <p>Installation was tested on date 2018-11-21.</p></li>
 </ul>
 
-<h3>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></h3>
+<h4>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></h4>
 
 <p>Before proceeding, it is suggested to update the existing R packages:</p>
 
@@ -355,9 +357,7 @@ containing all the functions necessary to preprocess data.</p>
 install_sen2cor()
 </code></pre>
 
-<h2><i class="fa fa-windows" aria-hidden="true"></i> On Windows</h2>
-
-<h3>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></h3>
+<h3><i class="fa fa-windows" aria-hidden="true"></i> On Windows</h3>
 
 <p><a href="https://cran.r-project.org/bin/windows/base">R</a> must be installed before proceeding.</p>
 
@@ -392,60 +392,7 @@ install_github(&quot;ranghetti/sen2r&quot;)
 <p>This will install the R package along with its package dependencies,
 containing all the functions necessary to preprocess data.</p>
 
-<h3>Installing runtime dependencies (optional)</h3>
-
-<p>Some external dependencies are required to run specific
-<span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>
-features:</p>
-
-<ul>
-<li><a href="http://step.esa.int/main/third-party-plugins-2/sen2cor"><strong>Sen2Cor</strong></a>
-is used to perform atmospheric correction of Sentinel-2 Level-1C products:
-it is required by the package, unless you choose not to correct products locally
-(using only Level-1C – TOA products or downloading directly Level-2A products);</li>
-<li><a href="http://www.gdal.org"><strong>GDAL</strong></a>
-is required to smooth/bufferise a cloud mask, and can be optionally used
-to compute spectral indices, RGB images and thumbnails.
-To avoid incompatibilities, it is <em>strictly mandatory</em> to use
-a GDAL installation provided with the 
-<a href="https://qgis.org/it/site/forusers/download.html">OSGeo4W installer</a>:
-if this requirement is not satisfied, it is possible to install GDAL
-with OSGeo4W directly from R (see below);</li>
-<li><a href="https://aria2.github.io"><strong>aria2</strong></a> is an alternative downloader which
-can be used to faster the download of SAFE archives; it can be optionally
-installed and used.</li>
-</ul>
-
-<p>These dependences can be graphically checked launching the function</p>
-
-<pre><code class="r">library(sen2r)
-check_sen2r_deps()
-</code></pre>
-
-<p>This function opens a GUI which help to check that they are satisfied;
-if some of them are missing, the GUI allows to install them directly.</p>
-
-<p>Alternatively, they can be installed individually from the command line with the
-three following functions (see their respective references for further details):</p>
-
-<pre><code class="r">check_gdal()
-install_sen2cor()
-install_aria2()
-</code></pre>
-
-<!-- Atmospheric correction is performed using [sen2cor](http://step.esa.int/main/third-party-plugins-2/sen2cor):
-the package will automatically download and install it at first use,
-or by running function [`install_sen2cor()`](reference/install_sen2cor.md).
-Please notice that the use of sen2cor algorythm was not yet possible under MAC.
-
-Preprocessing functions make use of [GDAL](http://www.gdal.org), which must
-support JPEG2000 format. On Windows, it is strongly recommended to install it
-using the [OSGeo4W installer](http://download.osgeo.org/osgeo4w/osgeo4w-setup-x86_64.exe)
-in advanced mode, and checking the installation of `openjpeg` library. -->
-
-<h2><i class="fa fa-apple" aria-hidden="true"></i> On MacOS</h2>
-
-<h3>Installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span></h3>
+<h3><i class="fa fa-apple" aria-hidden="true"></i> On MacOS</h3>
 
 <p><a href="https://cran.r-project.org/bin/windows/base">R</a> must be installed before proceeding.</p>
 
@@ -488,23 +435,60 @@ install_github(&quot;ranghetti/sen2r&quot;)
 <p>This will install the R package along with its package dependencies,
 containing all the functions necessary to preprocess data.</p>
 
-<h3>Installing runtime dependencies (optional)</h3>
+<h3>Installing Sen2Cor</h3>
 
-<p>Some external dependencies are required to run specific
+<p><a href="http://step.esa.int/main/third-party-plugins-2/sen2cor"><strong>Sen2Cor</strong></a>
+is used to perform atmospheric correction of Sentinel-2 Level-1C products,
+so its installation can be skipped in case this function is not required
+by the user (using only Level-1C – TOA products 
+or downloading directly Level-2A products).</p>
+
+<p>It can be graphically checked / installed launching the function</p>
+
+<pre><code class="r">library(sen2r)
+check_sen2r_deps()
+</code></pre>
+
+<p>This function opens a GUI which help to check if this and other dependencies
+are satisfied;
+from this GUI a new Sen2Cor installation can be performed,
+or an existing environment can be linked to Sen2Cor.</p>
+
+<p>Alternatively, it can be installed from the command line with the
+following function:</p>
+
+<pre><code class="r">install_sen2cor()
+</code></pre>
+
+<h3>Installing other dependencies (generally unrequired and discouraged)</h3>
+
+<p>Other dependencies can be configure to run specific
 <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>
-features:</p>
+features; their installation is generally unrequired (they do not add relevant
+improvements to the package) and discouraged (errors could occur).</p>
 
 <ul>
-<li><a href="http://step.esa.int/main/third-party-plugins-2/sen2cor"><strong>Sen2Cor</strong></a>
-is used to perform atmospheric correction of Sentinel-2 Level-1C products:
-it is required by the package, unless you choose not to correct products locally
-(using only Level-1C – TOA products or downloading directly Level-2A products);</li>
 <li><a href="http://www.gdal.org"><strong>GDAL</strong></a>
-is required to smooth/bufferise a cloud mask, and can be optionally used
-to compute spectral indices, RGB images and thumbnails;</li>
+is no more required, being used only to smooth/bufferise a cloud mask
+(and <em>optionally</em> to compute spectral indices, RGB images and thumbnails).
+On Windows, to avoid incompatibilities, it is <em>strictly mandatory</em> 
+to use a GDAL installation provided with the 
+<a href="https://qgis.org/it/site/forusers/download.html">OSGeo4W installer</a>:
+if this requirement is not satisfied, it is possible to install GDAL
+with OSGeo4W directly from R (see below).
+<strong>Note</strong>: configuring a runtime <strong>GDAL</strong> environment could fail for different reasons
+(e.g. problems related to GDAL environment like missing libraries,
+or custom environment variables which could conflict).
+<span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>
+maintainers are not responsible in case of GDAL-related issues
+(no assistance is provided in this case).</li>
 <li><a href="https://aria2.github.io"><strong>aria2</strong></a> is an alternative downloader which
 can be used to faster the download of SAFE archives; it can be optionally
-installed and used.</li>
+installed and used.
+Since the number of concurrent downloads from ESA SciHub is limited to 2,
+the use of <strong>aria2</strong> is generally not faster than the default downloader;
+for this reason, its use is recommended only in case of problems with
+the default downloader.</li>
 </ul>
 
 <p>These dependences can be graphically checked launching the function</p>
@@ -513,9 +497,14 @@ installed and used.</li>
 check_sen2r_deps()
 </code></pre>
 
-<p>This function opens a GUI which help to check that they are satisfied.</p>
+<p>Alternatively, they can be installed individually from the command line with the
+following functions (see their respective references for further details):</p>
 
-<h4>Note on GDAL installation</h4>
+<pre><code class="r">check_gdal()
+install_aria2()
+</code></pre>
+
+<h4>Note on GDAL installation on MacOS</h4>
 
 <p>In order to avoid incompatibilities with GDAL, it is <em>strictly mandatory</em> to use
 a GDAL installation provided with the

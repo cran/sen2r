@@ -32,15 +32,6 @@ knitr::opts_chunk$set(echo = TRUE)
 #  install_github("ranghetti/sen2r")
 
 ## ---- eval = FALSE------------------------------------------------------------
-#  library(sen2r)
-#  check_sen2r_deps()
-
-## ---- eval = FALSE------------------------------------------------------------
-#  check_gdal()
-#  install_sen2cor()
-#  install_aria2()
-
-## ---- eval = FALSE------------------------------------------------------------
 #  update.packages(ask = FALSE)
 
 ## ---- eval = FALSE------------------------------------------------------------
@@ -59,4 +50,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ## ---- eval = FALSE------------------------------------------------------------
 #  library(sen2r)
 #  check_sen2r_deps()
+
+## ---- eval = FALSE------------------------------------------------------------
+#  install_sen2cor()
+
+## ---- eval = FALSE------------------------------------------------------------
+#  library(sen2r)
+#  check_sen2r_deps()
+
+## ---- eval = FALSE------------------------------------------------------------
+#  check_gdal()
+#  install_aria2()
 

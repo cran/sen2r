@@ -1,6 +1,6 @@
-3bbdb9f5af3dcfe698a9c281002fb8f4 *DESCRIPTION
+b66f8a47c90981bfb31dbbca0fa8855a *DESCRIPTION
 0984bd39e4d2fb6775cd5b3307bf250a *NAMESPACE
-010fb349b00b94b9b29323a4f6ab5aff *NEWS.md
+aa1ba6db12d80de197129c752fb08a24 *NEWS.md
 7d8dac2c244cd16670f399c8d2caa786 *R/abs2rel.R
 ee4fe9d393262d771bad3242c10bf89c *R/add_rgb_image.R
 0602bb93ee0a516c7fdfbd90dcddc6ba *R/build_example_param_file.R
@@ -62,13 +62,13 @@ f6c8fc19925465fa0465492603abd043 *R/safe_shortname.R
 a66f8119a6ed1e64ebe79de5b65a7b4e *R/sen2r_process_report.R
 9b6a01dde8ff495318509a785d85613b *R/smooth_mask.R
 512b63409eb9a8e04bd897110a1535f7 *R/st_as_text_2.R
-116ff153970a311337c699bb0be2f091 *R/st_crs2.R
+68473e01dfbd8f5df4949afb92e6baad *R/st_crs2.R
 770f0352fdfaaf78973cc496b661dccc *R/str_pad2.R
 603885a4948a551a6395d55b415e3c7f *R/suppress_warnings.R
 24fc43f87259359f7601cabe6c35e8b2 *R/tiles_intersects.R
 e09728b3a6ba4d8554ed8346e0b0a1e4 *R/trace_functions.R
 5fabf75791e077874e325faa6d04c972 *R/zzz.R
-3eac70a3bd7d0df1d85b7bd4951cd7fa *build/vignette.rds
+80f5c8a25931f46cccfe726b70d1d3ec *build/vignette.rds
 2de2c53e6c008763ed3930048763cf9d *inst/CITATION
 acb98cc59018b28e72428d184c327c61 *inst/WORDLIST
 cdd82bfe49c68e3448399fd8cef67ca8 *inst/doc/docker.R
@@ -213,7 +213,7 @@ f3f6b511288c560c61ecdcb10fc08acf *tests/testthat/setup-scihub_creds.R
 ca12eec893d881a2990ace569b9170a7 *tests/testthat/test-list_indices.R
 9468dbae6c43be3b197b59a4a8f2054a *tests/testthat/test-load_binpaths.R
 e9f3e014fee3312aa09587aaade8d46d *tests/testthat/test-mountpoint.R
-e027eaaa6107d484579d2b9da8dd59b4 *tests/testthat/test-projpar.R
+be103bee22751e6cb4ba333a3fafb304 *tests/testthat/test-projpar.R
 4367e6c3b11a20672ead057a0127a6c1 *tests/testthat/test-s2_calcindices.R
 e0e40c0fb957c22d3db268a2f9715f9c *tests/testthat/test-s2_dop.R
 b89b3903fc3da97ec8c16eb0462bbab5 *tests/testthat/test-s2_download.R

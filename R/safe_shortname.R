@@ -50,6 +50,9 @@
 #' @param force_tiles Deprecated (no more used).
 #' @param full.name Logical value: if TRUE (default), all the input path
 #'  is maintained (if existing); if FALSE, only basename is returned.
+#' @param allow_duplicated Logical value: if TRUE, duplicated values are
+#'  maintained; if FALSE (default), in case of duplicated value a suffix is
+#'  added to the tile ID (see `add_tile_suffix()`).
 #' @param set.seed Deprecated (no more used).
 #' @param multiple_names Deprecated (no more used).
 #' @param abort Logical parameter: if TRUE, the function aborts in case
@@ -59,9 +62,8 @@
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
 #' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 #'  "sen2r": An R toolbox for automatically downloading and preprocessing 
-#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. DOI: 
-#'  \href{https://doi.org/10.1016/j.cageo.2020.104473}{10.1016/j.cageo.2020.104473}, 
-#'  URL: \url{http://sen2r.ranghetti.info/}.
+#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. 
+#'  \doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
 #' @note License: GPL 3.0
 #' @export
 
@@ -77,6 +79,7 @@ safe_shortname <- function(
   tiles = NULL, # deprecated
   force_tiles = NULL, # deprecated
   full.name = TRUE, 
+  allow_duplicated = FALSE,
   set.seed = NULL, # deprecated
   multiple_names = NULL,
   abort = FALSE
@@ -142,14 +145,18 @@ safe_shortname <- function(
     id_orbit,"_",id_tile,"_",prodtype,"_",substr(res,1,2)
   )]
   short_name[s2_metadata[,!validname]] <- NA
-  
-  # check name length
-  if (any(s2_metadata[,validname] & nchar(short_name)!=31)) {
-    print_message(
-      type="warning",
-      "Length of shortname is wrong (probably \"prod_type\" or \"res\" ",
-      "has wrong length).")
+  # check for duplicates
+  if (allow_duplicated && any(duplicated(short_name))) {
+    short_name <- add_tile_suffix(short_name)
   }
+  
+  # # check name length
+  # if (any(s2_metadata[,validname] & nchar(short_name)!=31)) {
+  #   print_message(
+  #     type="warning",
+  #     "Length of shortname is wrong (probably \"prod_type\" or \"res\" ",
+  #     "has wrong length).")
+  # }
   
   # add dirname and extension
   out_name <- ifelse(

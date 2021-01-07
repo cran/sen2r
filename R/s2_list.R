@@ -49,21 +49,20 @@
 #'  `availability != "ignore"`, values are TRUE / FALSE for
 #'  products available for download / stored in the Long Term Archive; 
 #'  otherwise, values are set to NA.
-#' @author Lorenzo Busetto, phD (2019) \email{lbusett@@gmail.com} - Inspired by 
+#' @author Lorenzo Busetto, phD (2019) - Inspired by 
 #'  function `getSentinel_query` of package 
 #'  [`getSpatialData`](https://github.com/16EAGLE/getSpatialData) by J. Schwalb-Willmann
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
 #' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 #'  "sen2r": An R toolbox for automatically downloading and preprocessing 
-#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. DOI: 
-#'  \href{https://doi.org/10.1016/j.cageo.2020.104473}{10.1016/j.cageo.2020.104473}, 
-#'  URL: \url{http://sen2r.ranghetti.info/}.
+#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. 
+#'  \doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
 #' @note License: GPL 3.0
 #' @import data.table
 #' @importFrom methods is
 #' @importFrom sf st_as_sfc st_sfc st_point st_as_text st_bbox st_coordinates
 #'  st_geometry st_intersection st_geometry st_convex_hull st_transform st_cast
-#'  st_union st_simplify
+#'  st_union st_simplify st_centroid
 #' @importFrom httr RETRY authenticate content
 #' @importFrom XML htmlTreeParse saveXML xmlRoot
 #' @importFrom utils head read.table
@@ -161,7 +160,7 @@ s2_list <- function(spatial_extent = NULL,
   
   # to avoid NOTE on check
   . <- online <- id_tile <- id_orbit <- 
-    sensing_datetime <- ingestion_datetime <- NULL
+    sensing_datetime <- ingestion_datetime <- centroid <- footprint <- NULL
   
   # convert input NA arguments in NULL
   for (a in c("spatial_extent","tile","orbit","time_interval","apihub")) {
@@ -306,7 +305,7 @@ s2_list <- function(spatial_extent = NULL,
   if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
   # compute date (to ignore duplicated dates)
   out_dt[,date := as.Date(substr(as.character(out_dt$sensing_datetime), 1, 10))]
-
+  
   if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
   out_names <- names(out_dt)
   # first, order by level (L2A, then L1C) and ingestion time (newers first)
@@ -322,7 +321,13 @@ s2_list <- function(spatial_extent = NULL,
     out_dt <- out_dt[grepl("^2Ap?$", level),]
   } # for level = "auto", do nothing because unuseful products are filtered below
   # filter (univocity)
-  out_dt <- out_dt[,head(.SD, 1), by = .(date, id_tile, id_orbit)]
+  suppressWarnings({
+    out_dt[,centroid:=st_centroid(st_as_sfc(footprint, crs = 4326))]
+  })
+  out_dt <- out_dt[,head(.SD, 1), by = .(
+    date, id_tile, id_orbit, 
+    apply(round(st_coordinates(centroid), 2), 1, paste, collapse = " ")
+  )]
   out_dt <- out_dt[,out_names,with=FALSE]
   if (nrow(out_dt) == 0) {return(as(setNames(character(0), character(0)), "safelist"))}
   out_dt <- out_dt[order(sensing_datetime),]

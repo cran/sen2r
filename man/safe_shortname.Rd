@@ -12,6 +12,7 @@ safe_shortname(
   tiles = NULL,
   force_tiles = NULL,
   full.name = TRUE,
+  allow_duplicated = FALSE,
   set.seed = NULL,
   multiple_names = NULL,
   abort = FALSE
@@ -37,6 +38,10 @@ band 08A with \code{res = '20m'} and \code{res = '60m'}.}
 
 \item{full.name}{Logical value: if TRUE (default), all the input path
 is maintained (if existing); if FALSE, only basename is returned.}
+
+\item{allow_duplicated}{Logical value: if TRUE, duplicated values are
+maintained; if FALSE (default), in case of duplicated value a suffix is
+added to the tile ID (see \code{add_tile_suffix()}).}
 
 \item{set.seed}{Deprecated (no more used).}
 
@@ -101,9 +106,8 @@ safe_shortname("S2A_MSIL1C_20170603T101031_N0205_R022_T32TQQ_20170603T101026.SAF
 \references{
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
-Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473. DOI:
-\href{https://doi.org/10.1016/j.cageo.2020.104473}{10.1016/j.cageo.2020.104473},
-URL: \url{http://sen2r.ranghetti.info/}.
+Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}

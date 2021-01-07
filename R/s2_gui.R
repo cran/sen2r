@@ -9,9 +9,8 @@
 #' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
 #' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 #'  "sen2r": An R toolbox for automatically downloading and preprocessing 
-#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. DOI: 
-#'  \href{https://doi.org/10.1016/j.cageo.2020.104473}{10.1016/j.cageo.2020.104473}, 
-#'  URL: \url{http://sen2r.ranghetti.info/}.
+#'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. 
+#'  \doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
 #' @note License: GPL 3.0
 #' @importFrom jsonlite fromJSON toJSON
 #' @import data.table
@@ -3112,7 +3111,7 @@ s2_gui <- function(param_list = NULL,
         title = "Method to obtain level-2A corrected images",
         p(HTML(
           "<em><strong>Note:</strong> this selector is active only if",
-          "<a href=\"https://step.esa.int/main/third-party-plugins-2/sen2cor/\"",
+          "<a href=\"http://step.esa.int/main/snap-supported-plugins/sen2cor/\"",
           "target=\"_blank\">Sen2Cor</a> was installed and configured;",
           "to do it, run <code>check_sen2r_deps()</code>.</em>"
         )),
@@ -3272,7 +3271,9 @@ s2_gui <- function(param_list = NULL,
           "Enter an alphanumeric label, which cannot contain spaces, points",
           "nor underscores, and that cannot be a five-length string with",
           "the same structure of a tile ID",
-          "(two numeric and three uppercase character values).",
+          "(two numeric and three uppercase character values),",
+          "nor a six-length string with the structure of a tile ID",
+          "followed by a lowercase letter.",
           "The label can not be empty.",
           "This label is used in the output file names."
         ),

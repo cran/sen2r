@@ -198,7 +198,7 @@ s2_order <- function(
       "stored in the Long Term Archive..."
     )
   }
-  quota_exceeded <- FALSE # initialise variable
+  quota_exceeded <- false_invalid_safe <- FALSE # initialise variables
   status_codes <- c()
   
   if (!is.null(attr(s2_prodlist, "order_status")) & reorder == FALSE) {  
@@ -223,12 +223,17 @@ s2_order <- function(
     if (i != to_order[1]) {
       Sys.sleep(delay)
     }
+    
     # order products
-    make_order <- RETRY(
-      verb = "GET",
-      url = as.character(s2_prodlist[i]),
-      config = authenticate(creds[1], creds[2])
-    )
+    times_429 <- 10 # if 429 "too many requests", retry up to 10 times
+    while (times_429 > 0) {
+      make_order <- RETRY(
+        verb = "GET",
+        url = as.character(s2_prodlist[i]),
+        config = authenticate(creds[1], creds[2])
+      )
+      times_429 <-if (make_order$status_code != 429) {0} else {times_429 - 1}
+    }
     
     # check if the order was successful
     if (inherits(make_order, "response")) {
@@ -237,6 +242,11 @@ s2_order <- function(
       # check that user quota did not exceed
       if (any(grepl("retrieval quota exceeded", make_order$headers$`cause-message`))) {
         quota_exceeded <- TRUE
+      }
+      # check that an invalid SAFE was not downloaded (#381)
+      if (make_order$status_code == 200) {
+        false_invalid_safe <- TRUE
+        make_order$content <- NULL; gc()
       }
       make_order$status_code == 202
     } else FALSE
@@ -322,6 +332,10 @@ s2_order <- function(
         " because user '",creds[1],"' offline products retrieval quota exceeded. ",
         "Please retry later, otherwise use different SciHub credentials ",
         "(see ?write_scihub_login or set a specific value for argument \"apihub\")."
+      )} else if (false_invalid_safe) {paste0(
+        " because some invalid SAFE products were stored on the ESA API Hub. ",
+        "Please retry ordering them on DHUS ",
+        "(set argument 'service = \"dhus\"' in function s2_order())."
       )} else {
         "."#," Try using a higher value for the argument \"delay\"."
       },

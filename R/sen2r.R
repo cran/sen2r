@@ -1167,19 +1167,19 @@ sen2r <- function(param_list = NULL,
     }
     if ("l2a" %in% pm$s2_levels) {
       s2_lists[["l2a"]] <- if (pm$step_atmcorr=="l2a") {
-        list.files(pm$path_l2a, "\\.SAFE$")
+        list.files(pm$path_l2a, "\\.SAFE$", full.names = TRUE)
       } else if (pm$step_atmcorr %in% c("scihub")) {
-        list.files(pm$path_l1c, "\\.SAFE$")
+        list.files(pm$path_l1c, "\\.SAFE$", full.names = TRUE)
       } else if (pm$step_atmcorr=="auto") {
-        all_l1c <- list.files(pm$path_l1c, "\\.SAFE$")
-        all_l2a <- list.files(pm$path_l2a, "\\.SAFE$")
+        all_l1c <- list.files(pm$path_l1c, "\\.SAFE$", full.names = TRUE)
+        all_l2a <- list.files(pm$path_l2a, "\\.SAFE$", full.names = TRUE)
         c(
           all_l2a,
           all_l1c[
             !gsub(
               "\\_OPER\\_","_USER_",
               gsub(
-                "^S2([AB])\\_((?:OPER\\_PRD\\_)?)MSIL1C\\_","S2\\1\\_\\2MSIL2A\\_",
+                "S2([AB])\\_((?:OPER\\_PRD\\_)?)MSIL1C\\_","S2\\1\\_\\2MSIL2A\\_",
                 all_l1c
               )
             ) %in% all_l2a
@@ -1188,10 +1188,11 @@ sen2r <- function(param_list = NULL,
       }
       suppressWarnings({
         s2_lists_footprints[["l2a"]] <- safe_getMetadata(
-          file.path(pm$path_l2a, s2_lists[["l2a"]]), 
-          "footprint", abort = FALSE, format = "vector", simplify = TRUE
+          s2_lists[["l2a"]], "footprint", 
+          abort = FALSE, format = "vector", simplify = TRUE
         )
       })
+      s2_lists[["l2a"]] <- basename(s2_lists[["l2a"]])
     }
     s2_lists <- lapply(s2_lists, function(l) {
       safe_getMetadata(l, "level", abort = FALSE, format = "vector", simplify = TRUE)
@@ -1246,10 +1247,20 @@ sen2r <- function(param_list = NULL,
   }
   s2_dt[,"lta":=if (is.null(s2_list_islta)) {FALSE} else {s2_list_islta}]
   s2_dt[,c("name","url"):=list(nn(names(s2_list)),nn(s2_list))]
-  s2_dt_centroid <- round(st_coordinates(
-    st_centroid(st_transform(st_as_sfc(s2_dt$footprint, crs = 4326), 3857))
-  ), -3) # rounded to 1 km
-  s2_dt[,c("centroid_x", "centroid_y") := list(s2_dt_centroid[,"X"], s2_dt_centroid[,"Y"])]
+  if (nrow(s2_dt) > 0) {
+    s2_footprint_sf_l <- lapply(s2_dt$footprint, function(f) {
+      tryCatch(
+        st_as_sfc(f, crs = 4326), 
+        error = function(e) {st_sfc(st_polygon(), crs = 4326)}
+      )
+    })
+    s2_dt_centroid <- round(st_coordinates(
+      st_centroid(st_transform(do.call("c",s2_footprint_sf_l), 3857))
+    ), -3) # rounded to 1 km
+    s2_dt[,c("centroid_x", "centroid_y") := list(s2_dt_centroid[,"X"], s2_dt_centroid[,"Y"])]
+  } else {
+    s2_dt[,c("centroid_x", "centroid_y") := list(numeric(), numeric())]
+  }
   
   # list existing products and get metadata
   s2_existing_list <- list.files(unique(c(pm$path_l1c,pm$path_l2a)), "\\.SAFE$", full.names = TRUE)
@@ -1492,6 +1503,24 @@ sen2r <- function(param_list = NULL,
     # export needed variables
     out_ext <- attr(s2names, "out_ext")
     out_format <- attr(s2names, "out_format")
+    out_proj <- if (!is.na(pm$proj)) {pm$proj} else {
+      s2_dt_tiles <- tile_utmzone(s2_dt$id_tile)
+      # select the more represented UTM zone
+      s2_sel_tile <- names(sort(table(s2_dt_tiles), decreasing = TRUE)[1])
+      if (is.null(s2_sel_tile)) {NA} else {st_crs2(s2_sel_tile)}
+    }
+    # create mask
+    s2_mask_extent <- if (is(pm$extent, "vector") && is.na(pm$extent)) {
+      NULL
+    } else if (anyNA(pm$extent$geometry)) {
+      NULL
+    } else if (pm$extent_as_mask==TRUE) {
+      st_combine(pm$extent)
+    } else {
+      st_combine(
+        suppressWarnings(st_cast(st_cast(pm$extent,"POLYGON"), "LINESTRING"))
+      )
+    }
     
     # Check if processing is needed
     if (all(unlist(sapply(s2names$new, sapply, length)) == 0)) {
@@ -1561,17 +1590,19 @@ sen2r <- function(param_list = NULL,
   }
   
   ## determine the output grid (this will be used later)
-  exi_meta <- cbind(
-    sen2r_getElements(unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")])),
-    data.frame(path=unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")]))
-    # raster_metadata(unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")]))
-  )
-  # res_type: "res20" if the minimum native resolution is 20m, "res10" if it is 10m
-  exi_meta[,res_type:=ifelse(prod_type %in% c("SCL","CLD","SNW"), "res20", "res10")]
-  reference_exi_paths <- if (nrow(exi_meta)>0) {
-    exi_meta[!duplicated(res_type),list(res_type,path)]
-  } else {
-    data.table(res_type = character(0), path = character(0))
+  if (pm$preprocess==TRUE) {
+    exi_meta <- cbind(
+      sen2r_getElements(unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")])),
+      data.frame(path=unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")]))
+      # raster_metadata(unlist(s2names$exi[c("indices","rgb","masked","warped_nomsk","warped")]))
+    )
+    # res_type: "res20" if the minimum native resolution is 20m, "res10" if it is 10m
+    exi_meta[,res_type:=ifelse(prod_type %in% c("SCL","CLD","SNW"), "res20", "res10")]
+    reference_exi_paths <- if (nrow(exi_meta)>0) {
+      exi_meta[!duplicated(res_type),list(res_type,path)]
+    } else {
+      data.table(res_type = character(0), path = character(0))
+    }
   }
 
   
@@ -2414,18 +2445,6 @@ sen2r <- function(param_list = NULL,
           }, simplify = FALSE, USE.NAMES = TRUE)
           
           dir.create(paths["warped"], recursive=FALSE, showWarnings=FALSE)
-          # create mask
-          s2_mask_extent <- if (is(pm$extent, "vector") && is.na(pm$extent)) {
-            NULL
-          } else if (anyNA(pm$extent$geometry)) { # FIXME check on telemod tiffs
-            NULL
-          } else if (pm$extent_as_mask==TRUE) {
-            st_combine(pm$extent) # TODO remove this when multiple extents will be allowed
-          } else {
-            st_combine(
-              suppressWarnings(st_cast(st_cast(pm$extent,"POLYGON"), "LINESTRING"))
-            ) # TODO remove this when multiple extents will be allowed
-          } # TODO add support for multiple extents
           
           if(pm$path_subdirs==TRUE){
             sapply(unique(dirname(unlist(c(warped_tomsk_reqout,warped_nomsk_reqout)))),dir.create,showWarnings=FALSE)
@@ -2454,7 +2473,7 @@ sen2r <- function(param_list = NULL,
                   },
                   mask = s2_mask_extent,
                   tr = if (!anyNA(pm$res)) {pm$res} else {NULL},
-                  t_srs = if (!is.na(pm$proj)){pm$proj} else {NULL},
+                  t_srs = out_proj,
                   r = pm$resampling,
                   dstnodata = s2_defNA(sel_prod),
                   co = if (out_format["warped"]=="GTiff") {c(
@@ -2503,7 +2522,7 @@ sen2r <- function(param_list = NULL,
                   },
                   mask = s2_mask_extent,
                   tr = if (!anyNA(pm$res)) {pm$res} else {NULL},
-                  t_srs = if (!is.na(pm$proj)) {pm$proj} else {NULL},
+                  t_srs = out_proj,
                   r = if (sel_prod == "SCL") {pm$resampling_scl} else {pm$resampling},
                   dstnodata = s2_defNA(sel_prod),
                   co = if (out_format["warped_nomsk"]=="GTiff") {c(

@@ -3162,7 +3162,7 @@ s2_gui <- function(param_list = NULL,
           "In this option:<ul>",
           "<li>set <strong>Yes</strong> to perform the topographic correction:",
           "DEM is searched in a default directory and downloaded from",
-          "<a href='http://srtm.csi.cgiar.org/' target='_blank'>CGIAR-CSI",
+          "<a href='https://srtm.csi.cgiar.org/' target='_blank'>CGIAR-CSI",
           "SRTM</a> if not found locally;</li>",
           "<li>set <strong>No</strong> to avoid applying a topographic",
           "correction;</li>",
@@ -4186,7 +4186,7 @@ s2_gui <- function(param_list = NULL,
           type = "error"
         )
         
-      } else if (length(rv$list_prods) > 0 & input$path_out_textin == "") {
+      } else if (input$preprocess == TRUE & length(rv$list_prods) > 0 & input$path_out_textin == "") {
         
         # directory missing
         sendSweetAlert(

@@ -1,6 +1,6 @@
-789127a6e9dbc4fc5385e794499e9df7 *DESCRIPTION
+1113fbe61c3afeca96c9734a535661e2 *DESCRIPTION
 4eb49459e0d3dde501d4e42abebdc5a5 *NAMESPACE
-234aef050b387a22e45291a5e64d193f *NEWS.md
+69b98bd47d67602241a841564a823a18 *NEWS.md
 2cfc6e27bab8dc3f08c41a578ddff98e *R/abs2rel.R
 d4aea3fe3e8e73c06629305e652c19ed *R/add_rgb_image.R
 0523d5e38ed594abf5f73375cc7fbbdf *R/add_tile_suffix.R
@@ -47,7 +47,7 @@ bc1af5a66e709215b87db11a9703477d *R/s2_gui.R
 bec1a4dc2f89856aa0e068997fe161d1 *R/s2_list.R
 3fe91ca77ebecc44a6577f4f3d4e25fc *R/s2_mask.R
 e484b3b92ebc92afc3ef73e7de6d2c06 *R/s2_merge.R
-e3cc200a862765a3b1c1ed0c7de6a72f *R/s2_order.R
+6feb9dd175cc325208867b2a43f9c2a3 *R/s2_order.R
 2ac21a92dcf5fd4cba92360ec3f886c7 *R/s2_rgb.R
 3aa78296ca9f9b0d108c5fe653f10976 *R/s2_thumbnails.R
 2a62f751d21b0288180bf1cb5a393744 *R/s2_tiles.R
@@ -56,7 +56,7 @@ e3cc200a862765a3b1c1ed0c7de6a72f *R/s2_order.R
 2023ebb13f2a2b3c1a63f1a66246af7b *R/safe_is_online.R
 f71df2ba7fe1670b92000d0d43579183 *R/safe_shortname.R
 a1a036e0229151f27b34ac6cba6eaa39 *R/safelist-class.R
-20d55d52e96b1962361c5c90fe11dc15 *R/scihub_login.R
+48c6b64ec651134f2e7ccbc16ef970eb *R/scihub_login.R
 206d3b8b28979ca861052ed49c5dfd69 *R/sen2cor.R
 2f8ac1f92b5d553d4477e0d122a141ec *R/sen2r.R
 e1ac272f4ead235f1107252789aa2ff0 *R/sen2r_getElements.R
@@ -70,7 +70,7 @@ a2ff1e30466571e14a3450f4877016b0 *R/tile_utmzone.R
 c639bc2f414310621718a0dda3cdaedb *R/tiles_intersects.R
 8337ce5b03b5b554044e21bc3e9fb321 *R/trace_functions.R
 5fabf75791e077874e325faa6d04c972 *R/zzz.R
-f4b72eba79839e7ad0465c1a3cb2b9d1 *build/partial.rdb
+57c1ead0632d1f52fa58ca5a45a06f7e *build/partial.rdb
 304a24cfc0c531ca139baabe0d6657e5 *build/vignette.rds
 1229324fa25bdf0bce6f1152290f04eb *inst/CITATION
 acb98cc59018b28e72428d184c327c61 *inst/WORDLIST
@@ -184,7 +184,7 @@ a627f594bea8a8d8db97cd93c4532acf *man/s2_calcindices.Rd
 e3e7a3235a1ccf0d24af2b006c100d16 *man/s2_list.Rd
 cb7688f6fd94c2ec3d147a96a11a38dd *man/s2_mask.Rd
 ce12742cb6e612d48e631d2f7845f098 *man/s2_merge.Rd
-f90463d7044a6dc6141b4794df2d5b7d *man/s2_order.Rd
+fdcd7ebabd08cf5d2cc097af6a55a736 *man/s2_order.Rd
 dfbe6c13bf78bed10d7d32140373fa9d *man/s2_rgb.Rd
 a7d7ff8022d8e8956ac01eaadeb80513 *man/s2_thumbnails.Rd
 548ae8c821e2da837c9946129f23e5ee *man/s2_tiles.Rd
@@ -193,7 +193,7 @@ a8b7820dfa1398e5340df65ea4429261 *man/safe_getMetadata.Rd
 07fdb7a7142bd545fa67ceac3000b6b5 *man/safe_is_online.Rd
 640815a459a8b778bdeeecb36fc203e1 *man/safe_shortname.Rd
 ce1795ccf6a6a20a6c8e3ca443dd18e1 *man/safelist-class.Rd
-c3e4209461b8ca83bf438d8e69e73348 *man/scihub_login.Rd
+a71f04c3b33bc3707b2f062a1397cc6f *man/scihub_login.Rd
 c7062954942cfa247500ef5d96f32b43 *man/sen2cor.Rd
 778e0c278944a00baa196b987d53962e *man/sen2r.Rd
 447b6c4a5912afe8d47489fe3284cd19 *man/sen2r_getElements.Rd
@@ -210,7 +210,7 @@ a827a989ad182af9dabb8a89e435ff5c *man/tiles_intersects.Rd
 0622a97a2aaa3c342f09636052c2d7f5 *tests/spelling.R
 b9ac633a5fad95967879021e1ed79e7d *tests/testthat.R
 205e7190ade86839a42e56487600ebd9 *tests/testthat/setup-commons.R
-57b7e597f58b4b157c782628bdbaa01a *tests/testthat/setup-scihub_creds.R
+de730174633c06f73b76bd37feaefc77 *tests/testthat/setup-scihub_creds.R
 7b846b3ee3fc672cf6a9012e944d3268 *tests/testthat/test-abs2rel.R
 7e00118b7f172eeef06c07279455822a *tests/testthat/test-build_example_param_file.R
 e11c94eea7936949fcc4c432918747e9 *tests/testthat/test-gdal_warp.R

@@ -20,7 +20,7 @@
 #' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 #'  "sen2r": An R toolbox for automatically downloading and preprocessing 
 #'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. 
-#'  \doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+#'  \doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 #' @note License: GPL 3.0
 #' @importFrom httr RETRY authenticate content
 #' @importFrom jsonlite fromJSON
@@ -58,7 +58,11 @@ safe_is_online <- function(s2_prodlist = NULL, apihub = NA, verbose = TRUE) {
   # TODO add input checks
   
   # replace apihub with dhus
-  s2_prodlist <- gsub("apihub", "dhus", s2_prodlist)
+  s2_prodlist <- gsub(
+    "((scihub)|(apihub))\\.copernicus\\.eu/apihub", 
+    "scihub.copernicus.eu/dhus", 
+    s2_prodlist
+  )
   
   # read credentials
   creds <- read_scihub_login(apihub)
@@ -70,7 +74,7 @@ safe_is_online <- function(s2_prodlist = NULL, apihub = NA, verbose = TRUE) {
       as.logical(content(RETRY(
         verb = "GET",
         url = gsub("\\$value$", "Online/$value", p),
-        config = httr::authenticate(creds[1], creds[2])
+        config = httr::authenticate(creds[1,1], creds[1,2])
       ), as = "parsed", encoding = "UTF-8")), 
       error = function(e) {
         print_message(

@@ -22,26 +22,18 @@ License: GPL 3.0
 s2tiles <- s2_tiles()
 
 # Extract a subset of all the tiles
-httr::GET(
-  "https://github.com/ranghetti/sen2r/raw/master/utils/vector/ch_bound.rds", 
-  httr::write_disk(ch_path <- tempfile())
-)
-ch <- readRDS(ch_path)
-s2tiles_ch <- s2tiles[suppressMessages(sf::st_intersects(ch, s2tiles))[[1]],]
+s2tiles_ch <- s2tiles[grepl("32T[LMN][ST]", s2tiles$tile_id),]
 s2_coords <- sf::st_coordinates(suppressWarnings(sf::st_centroid(s2tiles_ch)))
 
 # Show the tiles
-plot(s2tiles_ch$geometry, border = "blue")
-plot(ch, border = "red", add = TRUE)
-text(s2_coords[,1], s2_coords[,2], s2tiles_ch$tile_id, col = "blue", cex = .75)
-
-# Use function tiles_intersects() to exclude unuseful tiles.
+plot(s2tiles_ch$geometry, border = "black")
+text(s2_coords[,1], s2_coords[,2], s2tiles_ch$tile_id, cex = .75)
 }
 \references{
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
 Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
-\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}

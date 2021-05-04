@@ -11,7 +11,7 @@ Sentinel.2 archives.
 It is a named character in which names are SAFE codes
 (e.g. \code{S2A_MSIL2A_20170507T102031_N0205_R065_T32TNR_20170507T102319.SAFE}),
 and values are URLs used to retrieve them from ESA API Hub (e.g.
-\verb{https://scihub.copernicus.eu/apihub/odata/v1/Products('a4a026c0-db7b-4ba8-9b09-53027ab0d7ab')/$value}).
+\verb{https://apihub.copernicus.eu/apihub/odata/v1/Products('a4a026c0-db7b-4ba8-9b09-53027ab0d7ab')/$value}).
 Some attributes may be included, basically information retrieved by
 function \link{s2_list} containing product metadata.
 Moreover, the attribute \code{online} (retrieved by function \link{safe_is_online}
@@ -58,7 +58,7 @@ as(s2_sf, "safelist")
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
 Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
-\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}

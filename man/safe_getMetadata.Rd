@@ -175,7 +175,7 @@ safe_isvalid("invalid_safe_name.SAFE", check_file = FALSE)
 # Download a sample SAFE archive (this can take a while)
 s2_exampleurl <- c(
   "S2A_MSIL1C_20190723T101031_N0208_R022_T32TNS_20190723T121220.SAFE" =
-    paste0("https://scihub.copernicus.eu/apihub/odata/v1/",
+    paste0("https://apihub.copernicus.eu/apihub/odata/v1/",
            "Products('19bbde60-992b-423d-8dea-a5e0ac7715fc')/$value")
 )
 s2_download(s2_exampleurl, outdir=tempdir())
@@ -202,7 +202,7 @@ rm_invalid_safe(s2_examplepath)
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
 Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
-\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2019) \email{luigi@ranghetti.info}

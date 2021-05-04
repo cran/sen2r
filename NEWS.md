@@ -1,3 +1,23 @@
+# Version 1.4.3
+
+## Minor changes
+- Use API URLs `https://apihub.copernicus.eu/apihub` instead of 
+    `https://scihub.copernicus.eu/apihub` as required after changes at 
+    SciHub side (https://scihub.copernicus.eu/news/News00868).
+- Manage multiple SciHub credentials when ordering SAFE archives from LTA
+    (experimental).
+
+## Documentation
+- Replace `http://` with `https://` in documentation _URLs. 
+
+## Checks
+- Replace Travis with GitHub Actions (and fix tests accordingly).
+
+## Bug fixes
+- Avoid topology errors on S2 footprints (to fix errors using `{sf}` 1.0).
+- Manage situations like in #397 (too many nodes for ESA API query).
+
+
 # Version 1.4.2
 
 ## Bug fixes
@@ -423,7 +443,7 @@ First stable release of package **sen2r**! See the announcement [here](https://l
 * `tiles_intersects()`: when an extent is loaded, now only required tiles are automatically used, instead than all the overlapping ones.
 
 ### Update dependencies
-* after [V8 major update](https://www.r-bloggers.com/2019/02/a-major-upgrade-of-the-v8-package/), [Installation page](http://sen2r.ranghetti.info/articles/installation.html) was edited to refer to `v8` instead than to `v8-3.14`
+* after [V8 major update](https://www.r-bloggers.com/2019/02/a-major-upgrade-of-the-v8-package/), [Installation page](https://sen2r.ranghetti.info/articles/installation.html) was edited to refer to `v8` instead than to `v8-3.14`
 
 ### Bug fixing:
 * Fix bug in SciHub login

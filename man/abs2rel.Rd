@@ -34,15 +34,15 @@ License: GPL 3.0
 }
 \examples{
 # the reference path
-(ref_path <- system.file(package="sen2r"))
+(ref_path <- system.file(package="sf"))
 # a path with a common parent with ref_path
-(in_path_1 <- system.file(package="gdalUtils"))
+(in_path_1 <- system.file(package="rgdal"))
 # a path included in ref_path
-(in_path_2 <- system.file("R/abs2rel.R", package="sen2r"))
+(in_path_2 <- system.file("DESCRIPTION", package="sf"))
 # a path external to ref_path (in Linux)
 (in_path_3 <- system.file(package="base"))
 # an unexisting path
-(in_path_4 <- gsub("sen2r","r2sen",ref_path))
+(in_path_4 <- gsub("sf$","unexistingpackage",ref_path))
 
 abs2rel(in_path_1, ref_path)
 
@@ -58,7 +58,7 @@ suppressWarnings(abs2rel(ref_path, ref_path))
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
 Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
-\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2017) \email{luigi.ranghetti@gmail.com}

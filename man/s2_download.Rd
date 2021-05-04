@@ -60,7 +60,7 @@ License: GPL 3.0
 }
 \examples{
 \dontrun{
-single_s2 <- paste0("https://scihub.copernicus.eu/apihub/odata/v1/",
+single_s2 <- paste0("https://apihub.copernicus.eu/apihub/odata/v1/",
   "Products(\'c7142722-42bf-4f93-b8c5-59fd1792c430\')/$value")
 names(single_s2) <- "S2A_MSIL1C_20170613T101031_N0205_R022_T32TQQ_20170613T101608.SAFE"
 # (this is equivalent to:
@@ -85,7 +85,7 @@ s2_download(list_safe, outdir=tempdir())
 L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 "sen2r": An R toolbox for automatically downloading and preprocessing
 Sentinel-2 satellite data. \emph{Computers & Geosciences}, 139, 104473.
-\doi{10.1016/j.cageo.2020.104473}, URL: \url{http://sen2r.ranghetti.info/}.
+\doi{10.1016/j.cageo.2020.104473}, URL: \url{https://sen2r.ranghetti.info/}.
 }
 \author{
 Luigi Ranghetti, phD (2020) \email{luigi@ranghetti.info}

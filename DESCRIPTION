@@ -1,7 +1,7 @@
 Package: sen2r
 Type: Package
 Title: Find, Download and Process Sentinel-2 Data
-Version: 1.4.3
+Version: 1.4.4
 Authors@R: c(person("Luigi", "Ranghetti",
                     email = "luigi@ranghetti.info",
                     role = c("aut", "cre"),
@@ -36,9 +36,9 @@ VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 Language: en-GB
 NeedsCompilation: no
-Packaged: 2021-05-04 13:12:13 UTC; lranghetti
+Packaged: 2021-05-06 05:23:40 UTC; lranghetti
 Author: Luigi Ranghetti [aut, cre] (<https://orcid.org/0000-0001-6207-5188>),
   Lorenzo Busetto [aut] (<https://orcid.org/0000-0001-9634-6038>)
 Maintainer: Luigi Ranghetti <luigi@ranghetti.info>
 Repository: CRAN
-Date/Publication: 2021-05-04 13:40:02 UTC
+Date/Publication: 2021-05-10 08:30:02 UTC

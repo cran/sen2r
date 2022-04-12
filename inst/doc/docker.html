@@ -213,7 +213,7 @@ hr {
 <pre><code class="bash">docker pull ranghetti/sen2r:latest
 </code></pre>
 
-<p>where <code>latest</code> corresponds to the software version in branch <a href="https://github.com/ranghetti/sen2r/tree/master">master</a> (see <a href="https://hub.docker.com/repository/registry-1.docker.io/ranghetti/sen2r/tags">here</a> all the available docker tags);</p></li>
+<p>where <code>latest</code> corresponds to the software version in branch <a href="https://github.com/ranghetti/sen2r/tree/main">main</a> (see <a href="https://hub.docker.com/repository/registry-1.docker.io/ranghetti/sen2r/tags">here</a> all the available docker tags);</p></li>
 <li><p>run the docker:</p>
 
 <pre><code class="bash">docker run --rm -e PASSWORD=sen2r -e USERID=$(id -u) -v $(pwd):/home/rstudio/host -p 8777:8787 ranghetti/sen2r

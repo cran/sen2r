@@ -374,7 +374,7 @@
 #'     extent = system.file("extdata/vector/barbellino.geojson", package = "sen2r"),
 #'     extent_name = "Barbellino",
 #'     timewindow = as.Date("2020-08-01"),
-#'     list_prods = c("TOA","BOA","SCL"),
+#'     list_prods = c("TOA","BOA","SCL","OAA"),
 #'     list_indices = c("NDVI","MSAVI2"),
 #'     list_rgb = c("RGB432T", "RGB432B", "RGB843B"),
 #'     mask_type = "cloud_medium_proba",
@@ -1016,6 +1016,7 @@ sen2r <- function(param_list = NULL,
     rmtmp <- FALSE # force not to remove intermediate files
   }
   dir.create(tmpdir, showWarnings=FALSE)
+  tmpdir <- normalize_path(tmpdir)
   
   
   # # internal parameters
@@ -1023,9 +1024,10 @@ sen2r <- function(param_list = NULL,
   # accepted products (update together with the same variables in s2_gui(), check_s2_list() and in compute_s2_names())
   l1c_prods <- c("TOA")
   l2a_prods <- c("BOA","SCL","TCI","AOT","WVP","CLD","SNW")
+  angle_prods <- c("SZA","OZA","SAA","OAA") # can be produced from both
   
   # Layer not to be masked (all the others are assumed to be masked)
-  nomsk <- c("SCL", "CLD", "SNW", "AOT")
+  nomsk <- c("SCL", "CLD", "SNW", "AOT", "SZA", "OZA", "SAA", "OAA")
   
   # if masking is required, produce also SCL
   list_prods <- if (!is.na(pm$mask_type)) {
@@ -1150,6 +1152,7 @@ sen2r <- function(param_list = NULL,
         server = pm$server,
         max_cloud = pm$max_cloud_safe,
         availability = "check",
+        tmpdir = file.path(tmpdir, "s2_list_l1c"),
         apihub = pm$apihub
       )
       s2_lists_footprints[["l1c"]] <- nn(attr(s2_lists[["l1c"]], "footprint"))
@@ -1179,6 +1182,7 @@ sen2r <- function(param_list = NULL,
         server = pm$server,
         max_cloud = pm$max_cloud_safe,
         availability = "check",
+        tmpdir = file.path(tmpdir, "s2_list_l2a"),
         apihub = pm$apihub
       )
       s2_lists_footprints[["l2a"]] <- nn(attr(s2_lists[["l2a"]], "footprint"))
@@ -1844,7 +1848,7 @@ sen2r <- function(param_list = NULL,
       sel_s2_list_l2a = s2_list_l2a_groups_A[sel_group_A],
       sel_s2_dt = s2_dt_groups_A[sel_group_A],
       i_group_A = match(names(s2names_groups_A[sel_group_A]), names(s2names_groups_A)),
-      sel_apihub_path = pm$apihub,
+      sel_apihub_path = as.list(rep(pm$apihub, length(s2names_groups_A))),
       .packages = c("sf", "sen2r")
     ) %DO_A% {
       
@@ -2370,6 +2374,13 @@ sen2r <- function(param_list = NULL,
           
           if ("l1c" %in% pm$s2_levels) {
             list_l1c_prods <- list_prods[list_prods %in% l1c_prods]
+            # if only L1C is required, produce angles from that
+            if (length(pm$s2_levels) == 1) {
+              list_l1c_prods <- c(
+                list_l1c_prods, 
+                list_prods[list_prods %in% angle_prods]
+              )
+            }
             tiles_l1c_names_out <- foreach(
               sel_prod = sel_s2names$req$tiles$L1C,
               sel_out = lapply(
@@ -2402,7 +2413,7 @@ sen2r <- function(param_list = NULL,
               sel_tiles_l1c_names_out
             }
           }
-          list_l2a_prods <- list_prods[list_prods %in% l2a_prods]
+          list_l2a_prods <- list_prods[list_prods %in% c(l2a_prods, angle_prods)]
           tiles_l2a_names_out <- foreach(
             sel_prod = sel_s2names$req$tiles$L2A,
             sel_out = lapply(

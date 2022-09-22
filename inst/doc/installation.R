@@ -5,14 +5,14 @@ knitr::opts_chunk$set(echo = TRUE)
 #  update.packages(ask = FALSE)
 
 ## ---- eval = FALSE------------------------------------------------------------
-#  install.packages("sen2r")
+#  install.packages("sen2r", dependencies = TRUE)
 
 ## ---- eval = FALSE------------------------------------------------------------
 #  install.packages("remotes")
 
 ## ---- eval = FALSE------------------------------------------------------------
 #  library(remotes)
-#  install_github("ranghetti/sen2r")
+#  install_github("ranghetti/sen2r", dependencies = TRUE)
 
 ## ---- eval = FALSE------------------------------------------------------------
 #  library(sen2r)

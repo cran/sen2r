@@ -1,3 +1,30 @@
+# Version 1.5.3
+
+## Bug fixes
+- Fix CRAN errors related to GDAL version.
+- Change maintainer's email in order to follow CRAN requirements.
+
+## Documentation
+- Update invalid URLs (`https://earth.esa.int/web/sentinel` to `https://sentinels.copernicus.eu/web/sentinel`).
+
+# Version 1.5.2
+
+## Major changes
+- Manage changes occurred in baseline version 04.00 (see #443):
+    - retrieve offset values from metadata;
+    - apply them to generate BOA/TOA products.
+
+## Minor changes
+- Do not check for Google Cloud / SciHub status in `s2_download()` if not needed.
+
+## Bug fixes
+- Fix `extent_as_mask` behaviour in `sen2r()` in case of GEOMETRYCOLLECTION type 
+    (threat as POLYGON, allowing masking).
+- Simplify automatic tests: a variable `full_tests` is set to FALSE by default 
+    (in this case, only fast / strategic tests are run). Set to TRUE to run all tests.
+- Minor fixes.
+
+
 # Version 1.5.1
 
 ## Major changes

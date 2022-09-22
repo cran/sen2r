@@ -1,6 +1,7 @@
 message("\n---- Test warping (clip, reproject, resize) ----")
 testthat::skip_on_cran()
 # testthat::skip_on_ci() # TODO try to remove
+skip_full_tests()
 
 # Required SAFE
 s2_l1c_list <- c(
@@ -122,7 +123,7 @@ exp_outpath_3 <- file.path(outdir_3, c(
 testthat::test_that(
   "Tests on clip TOA on extent, reproject and resize and save as ENVI", {
     
-    testthat::skip_if(Sys.info()["sysname"] == "Windows")
+    testthat::skip_if(Sys.info()["sysname"] != "Linux")
     # FIXME because it causes Windows crashing launching gdal_utils("warp",...)
     # within gdal_warp().
     

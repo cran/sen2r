@@ -20,7 +20,7 @@
 #'  
 #' @name safelist-class
 #' @aliases safelist
-#' @author Luigi Ranghetti, phD (2019) \email{luigi@@ranghetti.info}
+#' @author Luigi Ranghetti, phD (2019)
 #' @references L. Ranghetti, M. Boschetti, F. Nutini, L. Busetto (2020).
 #'  "sen2r": An R toolbox for automatically downloading and preprocessing 
 #'  Sentinel-2 satellite data. _Computers & Geosciences_, 139, 104473. 
@@ -85,7 +85,7 @@ setAs("character", "safelist", function(from) {
     attr(from, "order_status") <- order_status
     if (any(c(
       is.null(names(from)),
-      !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2))", as.vector(from)),
+      !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2)|(^/vsicurl/https://sentinel-cogs\\.s3\\.us-west-2))", as.vector(from)),
       !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", names(from))
     ))) {
       stop("cannot convert to safelist (input format not recognised)")
@@ -98,7 +98,7 @@ setAs("character", "safelist", function(from) {
     # list
     if (any(c(
       is.null(names(from)),
-      !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2))", as.vector(from)),
+      !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2)|(^/vsicurl/https://sentinel-cogs\\.s3\\.us-west-2))", as.vector(from)),
       !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", names(from))
     ))) {
       stop("cannot convert to safelist (input format not recognised)")
@@ -112,7 +112,7 @@ setAs("data.frame", "safelist", function(from) {
   # check if input can be converted
   if (nrow(from) == 0) {} else if (any(c(
     is.null(from$name), is.null(from$url), 
-    !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2))", from$url),
+    !grepl("((^http.+Products\\(.+\\)/\\$value$)|(^gs://gcp-public-data-sentinel-2)|(^/vsicurl/https://sentinel-cogs\\.s3\\.us-west-2))", from$url),
     !grepl("^S2[AB]\\_MSIL[12][AC]\\_[0-9]{8}T[0-9]{6}\\_N[0-9]{4}\\_R[0-9]{3}\\_T[A-Z0-9]{5}\\_[0-9]{8}T[0-9]{6}\\.SAFE$", from$name)
   ))) {
     stop("cannot convert to safelist (input format not recognised)")
@@ -139,6 +139,7 @@ setAs("sf", "safelist", function(from) {
 ## Methods FROM safelist
 
 #' @export
+#' @rdname safelist-class
 as.data.frame.safelist <- function(x, row.names = NULL, optional = FALSE, ...) {
   to <- data.frame(name = names(x), url = as.vector(x), stringsAsFactors = FALSE)
   autoRN <- (is.null(row.names) || length(row.names) != nrow(to))
@@ -155,6 +156,7 @@ setAs("safelist", "data.frame", function(from) {
 })
 
 #' @export
+#' @rdname safelist-class
 as.data.table.safelist <- function(x, keep.rownames = FALSE, ...) {
   rownames <- if (keep.rownames) {
     names(x)
@@ -166,6 +168,7 @@ setAs("safelist", "data.table", function(from) {
 })
 
 #' @export
+#' @rdname safelist-class
 as.character.safelist <- function(x, ...) {
   x[seq_len(length(x))]
 }
@@ -174,6 +177,7 @@ setAs("safelist", "character", function(from) {
 })
 
 #' @export
+#' @rdname safelist-class
 st_as_sf.safelist <- function(x, ...) {
   if (!is.null(attr(x, "footprint"))) {
     sf::st_as_sf(as.data.frame(x), wkt = "footprint", crs = 4326)
@@ -188,6 +192,7 @@ setAs("safelist", "sf", function(from) {
 
 ## Print method
 #' @export
+#' @rdname safelist-class
 print.safelist = function(x, ...) {
   x_print <- as.character(x)[seq_len(min(length(x),5))]
   names(x_print) <- names(x)[seq_len(min(length(x),5))]

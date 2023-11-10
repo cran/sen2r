@@ -159,9 +159,6 @@ table, .body h2 { border-bottom: 1px solid #666; }
 <h4 id="installing-dependencies">Installing dependencies</h4>
 <p>Before installing <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>, it is recommended to check <a href="https://cran.r-project.org/bin/linux/">R</a> (v. 3.4.4 or higher) and the following libraries to be present:</p>
 <ul>
-<li><a href="https://gdal.org/">GDAL</a>, <a href="https://proj4.org/">PROJ</a> and <a href="https://trac.osgeo.org/geos/">GEOS</a>
-(required by <a href="https://r-forge.r-project.org/projects/rgdal/">rgdal</a>
-and <a href="https://r-forge.r-project.org/projects/rgeos/">rgeos</a>);</li>
 <li><a href="https://stedolan.github.io/jq/">jq</a>
 (required by <a href="https://github.com/ropensci/jqr/">jqr</a>);</li>
 <li><a href="https://github.com/protocolbuffers/protobuf/">protobuf</a>
@@ -183,7 +180,7 @@ and <a href="https://r-forge.r-project.org/projects/rgeos/">rgeos</a>);</li>
 <span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span>
 features:</p>
 <ul>
-<li><a href="http://step.esa.int/main/snap-supported-plugins/sen2cor/"><strong>Sen2Cor</strong></a>
+<li><a href="https://step.esa.int/main/snap-supported-plugins/sen2cor/"><strong>Sen2Cor</strong></a>
 is used to perform atmospheric correction of Sentinel-2 Level-1C products:
 it is required by the package, unless you choose not to correct products locally
 (using only Level-1C – TOA products or downloading directly Level-2A products);</li>
@@ -318,9 +315,9 @@ containing all the functions necessary to preprocess data.</p>
 <p>In the case it was already installed, it is suggested to update the existing R packages:</p>
 <pre><code class="language-r">update.packages(ask = FALSE)
 </code></pre>
-<p>Packages can be installed using the compiled binaries, except from <strong>sp</strong>, <strong>sf</strong>, <strong>rgdal</strong> and <strong>rgeos</strong>,
+<p>Packages can be installed using the compiled binaries, except from <strong>sp</strong> and <strong>sf</strong>,
 which are recommended to be compiled. To do it, use the command</p>
-<pre><code class="language-r">install.packages(c(&quot;sp&quot;, &quot;sf&quot;, &quot;rgdal&quot;, &quot;rgeos&quot;), type = &quot;source&quot;)
+<pre><code class="language-r">install.packages(c(&quot;sp&quot;, &quot;sf&quot;), type = &quot;source&quot;)
 </code></pre>
 <p><strong>after</strong> having installed GDAL as described above.</p>
 <p><span style="color:#5793dd;vertical-align:top;font-size:90%;font-weight:normal;">sen</span><span style="color:#6a7077;vertical-align:baseline;font-size:115%;font-weight:bolder;">2</span><span style="color:#2f66d5;vertical-align:baseline;font-size:90%;font-weight:bold;">r</span> can be installed from CRAN:</p>
@@ -347,7 +344,7 @@ install_github(&quot;ranghetti/sen2r&quot;)
 <p>This will install the R package along with its package dependencies,
 containing all the functions necessary to preprocess data.</p>
 <h3 id="installing-sen2cor">Installing Sen2Cor</h3>
-<p><a href="http://step.esa.int/main/snap-supported-plugins/sen2cor/"><strong>Sen2Cor</strong></a>
+<p><a href="https://step.esa.int/main/snap-supported-plugins/sen2cor/"><strong>Sen2Cor</strong></a>
 is used to perform atmospheric correction of Sentinel-2 Level-1C products,
 so its installation can be skipped in case this function is not required
 by the user (using only Level-1C – TOA products

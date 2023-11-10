@@ -35,7 +35,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #  update.packages(ask = FALSE)
 
 ## ---- eval = FALSE------------------------------------------------------------
-#  install.packages(c("sp", "sf", "rgdal", "rgeos"), type = "source")
+#  install.packages(c("sp", "sf"), type = "source")
 
 ## ---- eval = FALSE------------------------------------------------------------
 #  install.packages("sen2r")

@@ -1,3 +1,18 @@
+# Version 1.6.0
+
+## Major changes
+- Remove the possibility to search/download SAFE archives from ESA SciHub due 
+    to its discontinuation.
+- Set `"gcloud"` as the default SAFE server.
+- Begin voiding some functions related to ESA SciHub: `s2_order()`, 
+    `safe_is_online()`, `*_scihub_login()`,
+    `"scihub"` methods in `s2_list()` and `s2_download()`.
+
+## Documentation
+- _Partially_ updating the documentation to reflect the above changes.
+- Remove old system requirements (#463).
+- Remove old references to {rgdal}.
+
 # Version 1.5.5
 
 ## Minor changes
@@ -556,7 +571,7 @@ First stable release of package **sen2r**! See the announcement [here](https://l
 * `tiles_intersects()`: when an extent is loaded, now only required tiles are automatically used, instead than all the overlapping ones.
 
 ### Update dependencies
-* after [V8 major update](https://www.r-bloggers.com/2019/02/a-major-upgrade-of-the-v8-package/), [Installation page](https://sen2r.ranghetti.info/articles/installation.html) was edited to refer to `v8` instead than to `v8-3.14`
+* after [V8 major update](https://ropensci.org/blog/2019/02/11/v8-20/), [Installation page](https://sen2r.ranghetti.info/articles/installation.html) was edited to refer to `v8` instead than to `v8-3.14`
 
 ### Bug fixing:
 * Fix bug in SciHub login
